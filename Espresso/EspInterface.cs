@@ -77,6 +77,132 @@ namespace Espresso.EspInterface
     }
     
     // Classes
+    
+    public class EsInterfaceBorder<TOpacity, TRadius, TWidth> : IEsModifier where TOpacity : IEnumerable<float> where TRadius : IEnumerable<float> where TWidth : IEnumerable<float>
+    {
+        // Properties and Fields
+
+        private IEsInstance? _parent;
+        private bool _active;
+        private (IEsColor b, IEsColor l, IEsColor r, IEsColor t) _color;
+        private TOpacity _opacity;
+        private TRadius _radius;
+        private TWidth _width;
+
+        public IEsInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value) return;
+
+                if (_parent.HasModifier(this))
+                {
+                    if (EsConfigs.Log) Console.WriteLine($"Espresso: Couldn't add EsInterfaceBorder to {_parent}, {_parent} already has EsInterfaceBorder.");
+                    
+                    return;
+                }
+
+                if (_parent != null) _parent.RemoveModifier(this);
+
+                _parent = value;
+
+                if (_parent != null) _parent.AddModifier(this);
+            }
+        }
+        
+        public bool Active { get => _active; set => _active = value; }
+
+        public string ModifierName { get => "EsInterfaceBorder"; }
+
+        public (IEsColor Bottom, IEsColor Left, IEsColor Right, IEsColor Top) Color { get => _color; set => _color = value; }
+        
+        public TOpacity Opacity { get => _opacity; set => _opacity = value; }
+        
+        public TRadius Radius { get => _radius; set => _radius = value; }
+        
+        public TWidth Width { get => _width; set => _width = value; }
+        
+        // Constructors and Methods
+    
+        public EsInterfaceBorder(IEsInterface? parent = null)
+        {
+            _parent = parent;
+            _active = true;
+            _color = (EsColor3.Black, EsColor3.Black, EsColor3.Black, EsColor3.Black);
+            _opacity = new TOpacity() { 1f, 1f, 1f, 1f};
+            _radius = (0f, 0f, 0f, 0f);
+            _width = (5f, 5f, 5f, 5f);
+
+            if (parent != null)
+            {
+                if (!parent.HasModifier(this)) parent.AddModifier(this);
+                else Console.WriteLine($"Espresso: Couldn't add EsInterfaceBorder to {parent}, {parent} already has EsInterfaceBorder.");
+            }
+        }
+    
+        public override string ToString()
+        {
+            return $"(EsInterfaceBorder)";
+        }
+    }
+
+    public class EsInterfaceCorner : IEsModifier
+    {
+        // Properties and Fields
+
+        private IEsInstance? _parent;
+        private bool _active;
+        private (float b, float l, float r, float t) _radius;
+
+        public IEsInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value) return;
+
+                if (_parent.HasModifier(this))
+                {
+                    if (EsConfigs.Log) Console.WriteLine($"Espresso: Couldn't add EsInterfaceCorner to {_parent}, {_parent} already has EsInterfaceCorner.");
+                    
+                    return;
+                }
+
+                if (_parent != null) _parent.RemoveModifier(this);
+
+                _parent = value;
+
+                if (_parent != null) _parent.AddModifier(this);
+            }
+        }
+        
+        public bool Active { get => _active; set => _active = value; }
+
+        public string ModifierName { get => "EsInterfaceCorner"; }
+        
+        public (float Bottom, float Left, float Right, float Top) Radius { get => _radius; set => _radius = value; }
+        
+        // Constructors and Methods
+    
+        public EsInterfaceCorner(IEsInterface? parent = null)
+        {
+            _parent = parent;
+            _active = true;
+            _radius = (0f, 0f, 0f, 0f);
+
+            if (parent != null)
+            {
+                if (!parent.HasModifier(this)) parent.AddModifier(this);
+                else Console.WriteLine($"Espresso: Couldn't add EsInterfaceCorner to {parent}, {parent} already has EsInterfaceCorner.");
+            }
+        }
+    
+        public override string ToString()
+        {
+            return $"(EsInterfaceCorner)";
+        }
+    }
 
     public class EsFrame : IEsInterface
     {
@@ -271,6 +397,7 @@ namespace Espresso.EspInterface
             }
 
             _modifiers.Add(modifier);
+            _rectangle.AddModifier(modifier);
             _onModifierAdded.Emit(modifier);
         }
 
@@ -288,6 +415,7 @@ namespace Espresso.EspInterface
             }
 
             _modifiers.Remove(modifier);
+            _rectangle.RemoveModifier(modifier);
             _onModifierRemoved.Emit(modifier);
         }
 
@@ -825,38 +953,4 @@ namespace Espresso.EspInterface
             return $"(EsRectangle Size=({_size.X}, {_size.Y}) Position=({_position.X}, {_position.Y}) Rotation={_rotation}º)";
         }
     }
-
-    // public class EsBorderStyling : IEsModifier
-    // {
-    //     // Properties and Fields
-    //
-    //     private IEsInstance
-    //     private (IEsColor b, IEsColor l, IEsColor r, IEsColor t) _color;
-    //     private (float b, float l, float r, float t) _opacity;
-    //     private (float b, float l, float r, float t) _radius;
-    //     private (float b, float l, float r, float t) _width;
-    //     
-    //     public (IEsColor Bottom, IEsColor Left, IEsColor Right, IEsColor Top) Color { get => _color; set => _color = value; }
-    //     
-    //     public (float Bottom, float Left, float Right, float Top) Opacity { get => _opacity; set => _opacity = value; }
-    //     
-    //     public (float Bottom, float Left, float Right, float Top) Radius { get => _radius; set => _radius = value; }
-    //     
-    //     public (float Bottom, float Left, float Right, float Top) Width { get => _width; set => _width = value; }
-    //     
-    //     // Constructors and Methods
-    //
-    //     public EsBorderStyling()
-    //     {
-    //         _color = (EsColor3.Black, EsColor3.Black, EsColor3.Black, EsColor3.Black);
-    //         _opacity = (1f, 1f, 1f, 1f);
-    //         _radius = (0f, 0f, 0f, 0f);
-    //         _width = (5f, 5f, 5f, 5f);
-    //     }
-    //
-    //     public override string ToString()
-    //     {
-    //         return $"(EsBorderStyling)";
-    //     }
-    // }
 }
