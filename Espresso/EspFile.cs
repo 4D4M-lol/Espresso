@@ -56,7 +56,7 @@ namespace Espresso.EspFile
             _absolutePath = System.IO.Path.GetFullPath(path);
             _relativePath = System.IO.Path.GetRelativePath(callerPath, path);
             _extension = System.IO.Path.GetExtension(_absolutePath);
-            _exists = File.Exists(_absolutePath);
+            _exists = File.Exists(_absolutePath) || Directory.Exists(_absolutePath);
             _isDirectory = Directory.Exists(_absolutePath);
             _isFile = File.Exists(_absolutePath);
         }
