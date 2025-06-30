@@ -55,6 +55,7 @@ namespace Espresso
         private IntPtr _renderer;
         private SDL.FRect _surface;
         private SDL.EventFilter _eventFilter;
+        private List<IEsModifier> _modifiers;
         private List<IEsInstance> _children;
         private List<string> _tags;
         private EsCloseOperation _closeOperation;
@@ -73,6 +74,8 @@ namespace Espresso
         private EsSignal<Action> _onWindowFullscreen;
         private EsSignal<Action<EsVector2<int>>> _onResize;
         private EsSignal<Action<EsVector2<int>>> _onMove;
+        private EsSignal<Action<IEsModifier>> _onModifierAdded;
+        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
         private EsSignal<Action<IEsInstance>> _onChildAdded;
         private EsSignal<Action<IEsInstance>> _onChildRemoved;
         
@@ -258,6 +261,10 @@ namespace Espresso
         public EsSignal<Action<EsVector2<int>>> OnResize { get => _onResize; }
         
         public EsSignal<Action<EsVector2<int>>> OnMove { get => _onMove; }
+        
+        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
+        
+        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
 
         public EsSignal<Action<IEsInstance>> OnChildAdded { get => _onChildAdded; }
 
@@ -493,6 +500,50 @@ namespace Espresso
             return new(descendants.Where(descendant => descendant.InstanceName == name));
         }
 
+        public List<IEsModifier> GetModifiers()
+        {
+            return new(_modifiers);
+        }
+
+        public void AddModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
+
+            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+
+            if (modifier.Parent != this)
+            {
+                Type childType = modifier.GetType();
+                
+                childType.GetField("_parent")?.SetValue(modifier, this);
+            }
+
+            _modifiers.Add(modifier);
+            _onModifierAdded.Emit(modifier);
+        }
+
+        public void RemoveModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
+            
+            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+
+            if (modifier.Parent == this)
+            {
+                Type childType = modifier.GetType();
+                
+                childType.GetField("_parent")?.SetValue(modifier, null);
+            }
+
+            _modifiers.Remove(modifier);
+            _onModifierRemoved.Emit(modifier);
+        }
+
+        public bool HasModifier(IEsModifier modifier)
+        {
+            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
+        }
+
         public List<IEsInstance> GetChildren()
         {
             return new(_children);
@@ -500,12 +551,16 @@ namespace Espresso
         
         public void AddChild(IEsInstance child)
         {
-            if (child == null)
-            {
-                throw new ArgumentNullException(nameof(child));
-            }
+            if (child == null) throw new ArgumentNullException(nameof(child));
 
             if (_children.Contains(child)) return;
+
+            if (child.Parent != this)
+            {
+                Type childType = child.GetType();
+                
+                childType.GetField("_parent")?.SetValue(child, this);
+            }
 
             _children.Add(child);
             _onChildAdded.Emit(child);
@@ -513,12 +568,16 @@ namespace Espresso
 
         public void RemoveChild(IEsInstance child)
         {
-            if (child == null)
-            {
-                throw new ArgumentNullException(nameof(child));
-            }
+            if (child == null) throw new ArgumentNullException(nameof(child));
             
             if (!_children.Contains(child)) return;
+
+            if (child.Parent == this)
+            {
+                Type childType = child.GetType();
+                
+                childType.GetField("_parent")?.SetValue(child, null);
+            }
 
             _children.Remove(child);
             _onChildRemoved.Emit(child);

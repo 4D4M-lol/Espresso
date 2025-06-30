@@ -59,20 +59,21 @@ namespace Espresso.EspInterface
     {
         // Properties
         
-        public EsVector2<float> Size { get; }
-        public EsVector2<float> Position { get; }
-        public float Rotation { get; }
-        public IEsColor Fill { get; }
+        public EsVector2<float> Size { get; set; }
+        public EsVector2<float> Position { get; set; }
+        public float Rotation { get; set; }
+        public IEsColor Fill { get; set; }
+        public EsSignal<Action<IEsModifier>> OnModifierAdded { get; }
+        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get; }
         
         // Methods
 
+        public List<IEsModifier> GetModifiers();
+        public void AddModifier(IEsModifier modifier);
+        public void RemoveModifier(IEsModifier modifier);
+        public bool HasModifier(IEsModifier modifier);
         public List<EsVector2<float>> GetPoints();
         public List<(EsVector2<float> Start, EsVector2<float> End)> GetLines();
-    }
-
-    public interface IEsModifier
-    {
-        
     }
     
     // Classes
@@ -83,6 +84,7 @@ namespace Espresso.EspInterface
 
         private EsRectangle _rectangle;
         private IEsInstance? _parent;
+        private List<IEsModifier> _modifiers;
         private List<IEsInstance> _children;
         private List<string> _tags;
         private string _name;
@@ -97,6 +99,8 @@ namespace Espresso.EspInterface
         private float _opacity;
         private IEsColor _backgroundColor;
         private bool _clip;
+        private EsSignal<Action<IEsModifier>> _onModifierAdded;
+        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
         private EsSignal<Action<IEsInstance>> _onChildAdded;
         private EsSignal<Action<IEsInstance>> _onChildRemoved;
 
@@ -141,6 +145,10 @@ namespace Espresso.EspInterface
         
         public bool Clip { get => _clip; set => _clip = value; }
         
+        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
+        
+        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
+        
         public EsSignal<Action<IEsInstance>> OnChildAdded { get => _onChildAdded; set => _onChildAdded = value; }
         
         public EsSignal<Action<IEsInstance>> OnChildRemoved { get => _onChildRemoved; set => _onChildRemoved = value; }
@@ -165,6 +173,11 @@ namespace Espresso.EspInterface
             _clip = false;
             _onChildAdded = new();
             _onChildRemoved = new();
+
+            if (parent != null)
+            {
+                _parent.AddChild(this);
+            }
         }
 
         public IEsInstance? Clone()
@@ -239,6 +252,50 @@ namespace Espresso.EspInterface
             return new(descendants.Where(descendant => descendant.InstanceName == name));
         }
 
+        public List<IEsModifier> GetModifiers()
+        {
+            return new(_modifiers);
+        }
+
+        public void AddModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
+
+            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+
+            if (modifier.Parent != this)
+            {
+                Type childType = modifier.GetType();
+                
+                childType.GetField("_parent")?.SetValue(modifier, this);
+            }
+
+            _modifiers.Add(modifier);
+            _onModifierAdded.Emit(modifier);
+        }
+
+        public void RemoveModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
+            
+            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+
+            if (modifier.Parent == this)
+            {
+                Type childType = modifier.GetType();
+                
+                childType.GetField("_parent")?.SetValue(modifier, null);
+            }
+
+            _modifiers.Remove(modifier);
+            _onModifierRemoved.Emit(modifier);
+        }
+
+        public bool HasModifier(IEsModifier modifier)
+        {
+            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
+        }
+
         public List<IEsInstance> GetChildren()
         {
             return new(_children);
@@ -246,12 +303,16 @@ namespace Espresso.EspInterface
         
         public void AddChild(IEsInstance child)
         {
-            if (child == null)
-            {
-                throw new ArgumentNullException(nameof(child));
-            }
+            if (child == null) throw new ArgumentNullException(nameof(child));
 
             if (_children.Contains(child)) return;
+
+            if (child.Parent != this)
+            {
+                Type childType = child.GetType();
+                
+                childType.GetField("_parent")?.SetValue(child, this);
+            }
 
             _children.Add(child);
             _onChildAdded.Emit(child);
@@ -259,12 +320,16 @@ namespace Espresso.EspInterface
 
         public void RemoveChild(IEsInstance child)
         {
-            if (child == null)
-            {
-                throw new ArgumentNullException(nameof(child));
-            }
+            if (child == null) throw new ArgumentNullException(nameof(child));
             
             if (!_children.Contains(child)) return;
+
+            if (child.Parent == this)
+            {
+                Type childType = child.GetType();
+                
+                childType.GetField("_parent")?.SetValue(child, null);
+            }
 
             _children.Remove(child);
             _onChildRemoved.Emit(child);
@@ -318,31 +383,33 @@ namespace Espresso.EspInterface
 
             Type parentType = _parent.GetType();
             EsVector2<float> parentSize;
+            EsVector2<float> parentPosition;
 
             if (_parent.GetType() == typeof(EsWindow))
             {
                 EsVector2<int> windowSize = parentType.GetProperty("Size")?.GetValue(_parent) as EsVector2<int> ?? new();
+                EsVector2<int> windowPosition = parentType.GetProperty("Position")?.GetValue(_parent) as EsVector2<int> ?? new();
                 parentSize = new(windowSize.X, windowSize.Y);
+                parentPosition = new(windowPosition.X, windowPosition.Y);
             }
             else
             {
                 parentSize = parentType.GetProperty("AbsoluteSize")?.GetValue(_parent) as EsVector2<float> ?? new();
+                parentPosition = parentType.GetProperty("AbsolutePosition")?.GetValue(_parent) as EsVector2<float> ?? new();
             }
 
-            EsVector2<float> calculatedSize = new(
+            EsVector2<float> size = new(
                 (parentSize.X * _size.Scale.X) + _size.Offset.X,
                 (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
             );
-            EsVector2<float> topLeftPosition = new(
+            EsVector2<float> position = new(
                 (parentSize.X * _position.Scale.X) + _position.Offset.X,
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
-            EsVector2<float> centerPosition = new(
-                topLeftPosition.X + (calculatedSize.X / 2f),
-                topLeftPosition.Y + (calculatedSize.Y / 2f)
-            );
+            _absoluteSize = size;
+            _absolutePosition = parentPosition + position;
 
-            return new EsRectangle(calculatedSize, centerPosition, _rotation, _backgroundColor);
+            return new EsRectangle(size, position, _rotation, _backgroundColor);
         }
 
         public override string ToString()
@@ -355,139 +422,123 @@ namespace Espresso.EspInterface
     {
         // Properties and Fields
         
-        private readonly EsTriangleType _type;
-        private readonly EsVector2<float> _size;
-        private readonly EsVector2<float> _position;
-        private readonly float _rotation;
-        private readonly IEsColor _fill;
+        private List<IEsModifier> _modifiers;
+        private EsTriangleType _type;
+        private EsVector2<float> _size;
+        private EsVector2<float> _position;
+        private float _rotation;
+        private IEsColor _fill;
         private List<EsVector2<float>> _points;
         private List<(EsVector2<float> s, EsVector2<float> e)> _lines;
+        private EsSignal<Action<IEsModifier>> _onModifierAdded;
+        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
 
-        public EsTriangleType Type { get => _type; }
+        public EsTriangleType Type
+        {
+            get => _type;
+            set
+            {
+                _type = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                    value, _size, _position, _rotation
+                );
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+        }
 
-        public EsVector2<float> Size { get => _size; }
+        public EsVector2<float> Size { 
+            get => _size; 
+            set
+            {
+                _size = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                    _type, value, _position, _rotation
+                );
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+            
+        }
 
-        public EsVector2<float> Position { get => _position; }
+        public EsVector2<float> Position
+        {
+            get => _position;
+            set
+            {
+                _position = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                    _type, _size, value, _rotation
+                );
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+        }
 
-        public float Rotation { get => _rotation; }
+        public float Rotation
+        {
+            get => _rotation;
+            set
+            {
+                _rotation = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                    _type, _size, _position, value
+                );
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+        }
         
-        public IEsColor Fill { get => _fill; }
-        
+        public IEsColor Fill { get => _fill; set => _fill = value; }
+
+        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
+
+        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
+
         // Constructors and Methods
 
         public EsTriangle(EsTriangleType type = EsTriangleType.Acute, EsVector2<float>? size = null, EsVector2<float>? position = null, float rotation = 0, IEsColor? fill = null)
         {
             _type = type;
-            _size = size ?? new EsVector2<float>(100, 100);
-            _position = position ?? new EsVector2<float>();
+            _size = size ?? new(100, 100);
+            _position = position ?? new();
             _rotation = float.Clamp(rotation, -360, 360);
             _fill = fill ?? new EsColor3(EsColors.White);
-            _points = new();
-            _lines = new();
+            (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                type, _size, _position, rotation
+            );
+            _points = calculated.points;
+            _lines = calculated.lines;
+        }
 
-            if (type == EsTriangleType.Acute)
-            {
-                float halfWidth = _size.X / 2f;
-                float halfHeight = _size.Y / 2f;
-                EsVector2<float> p1 = new EsVector2<float>(-halfWidth, -halfHeight);
-                EsVector2<float> p2 = new EsVector2<float>(halfWidth, -halfHeight);
-                EsVector2<float> p3 = new EsVector2<float>(halfWidth * 0.25f, halfHeight);
+        public List<IEsModifier> GetModifiers()
+        {
+            return new(_modifiers);
+        }
 
-                _points.Add(p1);
-                _points.Add(p2);
-                _points.Add(p3);
-            }
-            else if (type == EsTriangleType.Equilateral)
-            {
-                float side = _size.X;
-                float halfSide = side / 2f;
-                float height = side * (float)Math.Sqrt(3) / 2f;
-                float halfHeight = height / 2f;
-                EsVector2<float> p1 = new EsVector2<float>(-halfSide, -halfHeight);
-                EsVector2<float> p2 = new EsVector2<float>(halfSide, -halfHeight);
-                EsVector2<float> p3 = new EsVector2<float>(0, halfHeight);
+        public void AddModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
 
-                _points.Add(p1);
-                _points.Add(p2);
-                _points.Add(p3);
-            }
-            else if (type == EsTriangleType.Isosceles)
-            {
-                float halfWidth = _size.X / 2f;
-                float height = _size.Y;
-                EsVector2<float> p1 = new EsVector2<float>(-halfWidth, -height / 2f);
-                EsVector2<float> p2 = new EsVector2<float>(halfWidth, -height / 2f);
-                EsVector2<float> p3 = new EsVector2<float>(0, height / 2f);
+            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
 
-                _points.Add(p1);
-                _points.Add(p2);
-                _points.Add(p3);
-            }
-            else if (type == EsTriangleType.Obtuse)
-            {
-                float halfWidth = _size.X / 2f;
-                float height = _size.Y;
-                EsVector2<float> p1 = new EsVector2<float>(-halfWidth, -height / 2f);
-                EsVector2<float> p2 = new EsVector2<float>(halfWidth, -height / 2f);
-                EsVector2<float> p3 = new EsVector2<float>(-halfWidth * 0.8f, height / 2f);
+            _modifiers.Add(modifier);
+            _onModifierAdded.Emit(modifier);
+        }
 
-                _points.Add(p1);
-                _points.Add(p2);
-                _points.Add(p3);
-            }
-            else if (type == EsTriangleType.Right)
-            {
-                float width = _size.X;
-                float height = _size.Y;
-                EsVector2<float> p1 = new EsVector2<float>(-width / 2f, -height / 2f);
-                EsVector2<float> p2 = new EsVector2<float>(width / 2f, -height / 2f);
-                EsVector2<float> p3 = new EsVector2<float>(-width / 2f, height / 2f);
-
-                _points.Add(p1);
-                _points.Add(p2);
-                _points.Add(p3);
-            }
-            else
-            {
-                float halfWidth = _size.X / 2f;
-                float halfHeight = _size.Y / 2f;
-                EsVector2<float> p1 = new EsVector2<float>(-halfWidth, -halfHeight);
-                EsVector2<float> p2 = new EsVector2<float>(halfWidth, -halfHeight * 0.8f);
-                EsVector2<float> p3 = new EsVector2<float>(halfWidth * 0.1f, halfHeight);
-
-                _points.Add(p1);
-                _points.Add(p2);
-                _points.Add(p3);
-            }
+        public void RemoveModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            if (_rotation != 0)
-            {
-                float cos = (float)Math.Cos(_rotation * Math.PI / 180.0f);
-                float sin = (float)Math.Sin(_rotation * Math.PI / 180.0f);
+            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
 
-                for (int i = 0; i < _points.Count; i++)
-                {
-                    float x = _points[i].X;
-                    float y = _points[i].Y;
-                    _points[i] = new EsVector2<float>(
-                        x * cos - y * sin,
-                        x * sin + y * cos
-                    );
-                }
-            }
+            _modifiers.Remove(modifier);
+            _onModifierRemoved.Emit(modifier);
+        }
 
-            for (int i = 0; i < _points.Count; i++)
-            {
-                _points[i] = new EsVector2<float>(
-                    _points[i].X + _position.X,
-                    _points[i].Y + _position.Y
-                );
-            }
-            
-            _lines.Clear();
-            _lines.Add((_points[0], _points[1]));
-            _lines.Add((_points[1], _points[2]));
-            _lines.Add((_points[2], _points[0]));
+        public bool HasModifier(IEsModifier modifier)
+        {
+            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
         }
 
         public List<EsVector2<float>> GetPoints()
@@ -499,6 +550,108 @@ namespace Espresso.EspInterface
         public List<(EsVector2<float> Start, EsVector2<float> End)> GetLines()
         {
             return new(_lines);
+        }
+
+        public static (List<EsVector2<float>> Points, List<(EsVector2<float> Start, EsVector2<float> End)> Lines) Calculate(
+            EsTriangleType type, EsVector2<float> size, EsVector2<float> position, float rotation
+        )
+        {
+            List<EsVector2<float>> points = new();
+            List<(EsVector2<float> start, EsVector2<float> end)> lines = new();
+            
+            if (type == EsTriangleType.Acute)
+            {
+                EsVector2<float> p1 = new(0, size.Y);
+                EsVector2<float> p2 = new(size.X, size.Y);
+                EsVector2<float> p3 = new(size.X * 0.25f, 0);
+
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(p3);
+            }
+            else if (type == EsTriangleType.Equilateral)
+            {
+                float side = size.X;
+                float height = side * (float)Math.Sqrt(3) / 2f;
+                EsVector2<float> p1 = new(0, height);
+                EsVector2<float> p2 = new(side, height);
+                EsVector2<float> p3 = new(side / 2f, 0);
+
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(p3);
+            }
+            else if (type == EsTriangleType.Isosceles)
+            {
+                EsVector2<float> p1 = new(0, size.Y);
+                EsVector2<float> p2 = new(size.X, size.Y);
+                EsVector2<float> p3 = new(size.X / 2f, 0);
+
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(p3);
+            }
+            else if (type == EsTriangleType.Obtuse)
+            {
+                EsVector2<float> p1 = new(0, size.Y);
+                EsVector2<float> p2 = new(size.X, size.Y);
+                EsVector2<float> p3 = new(size.X * 0.2f, 0);
+
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(p3);
+            }
+            else if (type == EsTriangleType.Right)
+            {
+                EsVector2<float> p1 = new(0, 0);
+                EsVector2<float> p2 = new(size.X, 0);
+                EsVector2<float> p3 = new(0, size.Y);
+
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(p3);
+            }
+            else if (type == EsTriangleType.Scalene)
+            {
+                EsVector2<float> p1 = new(0, size.Y);
+                EsVector2<float> p2 = new(size.X, size.Y * 0.8f);
+                EsVector2<float> p3 = new(size.X * 0.1f, 0);
+
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(p3);
+            }
+            
+            if (rotation != 0)
+            {
+                float cos = (float)Math.Cos(rotation * Math.PI / 180.0f);
+                float sin = (float)Math.Sin(rotation * Math.PI / 180.0f);
+
+                for (int i = 0; i < points.Count; i++)
+                {
+                    float x = points[i].X;
+                    float y = points[i].Y;
+                    points[i] = new(
+                        x * cos - y * sin,
+                        x * sin + y * cos
+                    );
+                }
+            }
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                points[i] = new(
+                    points[i].X + position.X,
+                    points[i].Y + position.Y
+                );
+            }
+            
+            lines.Clear();
+            lines.Add((points[0], points[1]));
+            lines.Add((points[1], points[2]));
+            lines.Add((points[2], points[0]));
+            
+            return (points, lines);
         }
 
         public override string ToString()
@@ -511,20 +664,58 @@ namespace Espresso.EspInterface
     {
         // Properties and Fields
         
+        private List<IEsModifier> _modifiers;
         private EsVector2<float> _size;
         private EsVector2<float> _position;
         private float _rotation;
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
         private List<(EsVector2<float> s, EsVector2<float> e)> _lines;
+        private EsSignal<Action<IEsModifier>> _onModifierAdded;
+        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
 
-        public EsVector2<float> Size { get => _size; }
+        public EsVector2<float> Size
+        {
+            get => _size;
+            set
+            {
+                _size = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(value, _position, _rotation);
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+        }
 
-        public EsVector2<float> Position { get => _position; }
+        public EsVector2<float> Position
+        {
+            get => _position;
+            set
+            {
+                _position = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, value, _rotation);
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+        }
 
-        public float Rotation { get => _rotation; }
+        public float Rotation
+        {
+            get => _rotation;
+            
+            set
+            {
+                _rotation = value;
+                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, _position, value);
+                _points = calculated.points;
+                _lines = calculated.lines;
+            }
+        }
         
-        public IEsColor Fill { get => _fill; }
+        public IEsColor Fill { get => _fill; set => _fill = value; }
+
+        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
+
+        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
         
         // Constructors and Methods
 
@@ -534,50 +725,39 @@ namespace Espresso.EspInterface
             _position = position ?? new();
             _rotation = float.Clamp(rotation, -360, 360);
             _fill = fill ?? new EsColor3(EsColors.White);
-            _points = new();
-            _lines = new();
-            float halfWidth = _size.X / 2f;
-            float halfHeight = _size.Y / 2f;
-            EsVector2<float> p1 = new EsVector2<float>(-halfWidth, halfHeight);
-            EsVector2<float> p2 = new EsVector2<float>(halfWidth, halfHeight);
-            EsVector2<float> p3 = new EsVector2<float>(halfWidth, -halfHeight);
-            EsVector2<float> p4 = new EsVector2<float>(-halfWidth, -halfHeight);
+            (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, _position, _rotation);
+            _points = calculated.points;
+            _lines = calculated.lines;
+        }
 
-            _points.Add(p1);
-            _points.Add(p2);
-            _points.Add(p3);
-            _points.Add(p4);
+        public List<IEsModifier> GetModifiers()
+        {
+            return new(_modifiers);
+        }
 
-            if (_rotation != 0)
-            {
-                float angleRad = _rotation * (float)Math.PI / 180.0f;
-                float cos = (float)Math.Cos(angleRad);
-                float sin = (float)Math.Sin(angleRad);
+        public void AddModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
 
-                for (int i = 0; i < _points.Count; i++)
-                {
-                    float x = _points[i].X;
-                    float y = _points[i].Y;
-                    _points[i] = new EsVector2<float>(
-                        x * cos - y * sin,
-                        x * sin + y * cos
-                    );
-                }
-            }
+            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
 
-            for (int i = 0; i < _points.Count; i++)
-            {
-                _points[i] = new EsVector2<float>(
-                    _points[i].X + _position.X,
-                    _points[i].Y + _position.Y
-                );
-            }
+            _modifiers.Add(modifier);
+            _onModifierAdded.Emit(modifier);
+        }
+
+        public void RemoveModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            _lines.Clear();
-            _lines.Add((_points[0], _points[1]));
-            _lines.Add((_points[1], _points[2]));
-            _lines.Add((_points[2], _points[3]));
-            _lines.Add((_points[3], _points[0]));
+            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+
+            _modifiers.Remove(modifier);
+            _onModifierRemoved.Emit(modifier);
+        }
+
+        public bool HasModifier(IEsModifier modifier)
+        {
+            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
         }
 
         public List<EsVector2<float>> GetPoints()
@@ -590,42 +770,93 @@ namespace Espresso.EspInterface
             return new(_lines);
         }
 
+        public static (List<EsVector2<float>> Points, List<(EsVector2<float> Start, EsVector2<float> End)> Lines) Calculate(
+            EsVector2<float> size, EsVector2<float> position, float rotation
+        )
+        {
+            List<EsVector2<float>> points = new();
+            List<(EsVector2<float> start, EsVector2<float> end)> lines = new();
+            EsVector2<float> p1 = new();
+            EsVector2<float> p2 = new(size.X, 0);
+            EsVector2<float> p3 = new(size.X, size.Y);
+            EsVector2<float> p4 = new(0, size.Y);
+
+            points.Add(p1);
+            points.Add(p2);
+            points.Add(p3);
+            points.Add(p4);
+
+            if (rotation != 0)
+            {
+                float angleRad = rotation * (float)Math.PI / 180.0f;
+                float cos = (float)Math.Cos(angleRad);
+                float sin = (float)Math.Sin(angleRad);
+
+                for (int i = 0; i < points.Count; i++)
+                {
+                    float x = points[i].X;
+                    float y = points[i].Y;
+                    points[i] = new(
+                        x * cos - y * sin,
+                        x * sin + y * cos
+                    );
+                }
+            }
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                points[i] = new(
+                    points[i].X + position.X,
+                    points[i].Y + position.Y
+                );
+            }
+            
+            lines.Clear();
+            lines.Add((points[0], points[1]));
+            lines.Add((points[1], points[2]));
+            lines.Add((points[2], points[3]));
+            lines.Add((points[3], points[0]));
+            
+            return (points, lines);
+        }
+
         public override string ToString()
         {
             return $"(EsRectangle Size=({_size.X}, {_size.Y}) Position=({_position.X}, {_position.Y}) Rotation={_rotation}º)";
         }
     }
 
-    public class EsBorderStyling : IEsModifier
-    {
-        // Properties and Fields
-
-        private (IEsColor b, IEsColor l, IEsColor r, IEsColor t) _color;
-        private (float b, float l, float r, float t) _opacity;
-        private (float b, float l, float r, float t) _radius;
-        private (float b, float l, float r, float t) _width;
-        
-        public (IEsColor Bottom, IEsColor Left, IEsColor Right, IEsColor Top) Color { get => _color; set => _color = value; }
-        
-        public (float Bottom, float Left, float Right, float Top) Opacity { get => _opacity; set => _opacity = value; }
-        
-        public (float Bottom, float Left, float Right, float Top) Radius { get => _radius; set => _radius = value; }
-        
-        public (float Bottom, float Left, float Right, float Top) Width { get => _width; set => _width = value; }
-        
-        // Constructors and Methods
-
-        public EsBorderStyling()
-        {
-            _color = (EsColor3.Black, EsColor3.Black, EsColor3.Black, EsColor3.Black);
-            _opacity = (1f, 1f, 1f, 1f);
-            _radius = (0f, 0f, 0f, 0f);
-            _width = (5f, 5f, 5f, 5f);
-        }
-
-        public override string ToString()
-        {
-            return $"(EsBorderStyling)";
-        }
-    }
+    // public class EsBorderStyling : IEsModifier
+    // {
+    //     // Properties and Fields
+    //
+    //     private IEsInstance
+    //     private (IEsColor b, IEsColor l, IEsColor r, IEsColor t) _color;
+    //     private (float b, float l, float r, float t) _opacity;
+    //     private (float b, float l, float r, float t) _radius;
+    //     private (float b, float l, float r, float t) _width;
+    //     
+    //     public (IEsColor Bottom, IEsColor Left, IEsColor Right, IEsColor Top) Color { get => _color; set => _color = value; }
+    //     
+    //     public (float Bottom, float Left, float Right, float Top) Opacity { get => _opacity; set => _opacity = value; }
+    //     
+    //     public (float Bottom, float Left, float Right, float Top) Radius { get => _radius; set => _radius = value; }
+    //     
+    //     public (float Bottom, float Left, float Right, float Top) Width { get => _width; set => _width = value; }
+    //     
+    //     // Constructors and Methods
+    //
+    //     public EsBorderStyling()
+    //     {
+    //         _color = (EsColor3.Black, EsColor3.Black, EsColor3.Black, EsColor3.Black);
+    //         _opacity = (1f, 1f, 1f, 1f);
+    //         _radius = (0f, 0f, 0f, 0f);
+    //         _width = (5f, 5f, 5f, 5f);
+    //     }
+    //
+    //     public override string ToString()
+    //     {
+    //         return $"(EsBorderStyling)";
+    //     }
+    // }
 }
