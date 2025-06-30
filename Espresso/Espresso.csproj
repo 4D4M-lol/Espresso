@@ -10,5 +10,13 @@
     <ItemGroup>
         <PackageReference Include="SDL3-CS" Version="3.2.16.3" />
     </ItemGroup>
+    
+    <ItemGroup>
+        <Content Include="assets\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Pack>True</Pack>
+            <PackagePath>assets\</PackagePath>
+        </Content>
+    </ItemGroup>
 
 </Project>

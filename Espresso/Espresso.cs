@@ -268,7 +268,7 @@ namespace Espresso
             _children = new();
             _tags = new();
             _closeOperation = EsCloseOperation.Close;
-            _icon = new EsImage(new("E:/JetBrains Rider/Espresso/Espresso/assets/icons/EspressoIcon32x32.png"));
+            _icon = new EsImage(new("assets/icons/EspressoIcon32x32.png"));
             _name = name ?? $"Espresso v{EsConfigs.Version}";
             _size = size ?? new EsVector2<int>(800, 600);
             _position = position ?? new EsVector2<int>();
