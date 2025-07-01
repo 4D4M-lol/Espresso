@@ -67,201 +67,7 @@ namespace Espresso.EspInterface
         // Methods
 
         public List<EsVector2<float>> GetPoints();
-        public List<(EsVector2<float> Start, EsVector2<float> End)> GetLines();
-    }
-    
-    // Classes
-
-    public class EsDrawInfo
-    {
-        // Properties and Fields
-        
-        private List<EsVector3<float>> _points;
-        private List<(EsVector3<float> start, EsVector3<float> end, float thickness)> _lines;
-        
-        public List<EsVector3<float>> Points { get => _points; }
-        
-        public List<(EsVector3<float> Start, EsVector3<float> End, float Thickness)> Lines { get => _lines; }
-        
-        // Constructors and Methods
-
-        public EsDrawInfo(List<EsVector3<float>>? points = null, List<(EsVector3<float> start, EsVector3<float> end)>? lines = null)
-        {
-            _points = points ?? new();
-            _lines = lines ?? new();
-        }
-    }
-    
-    public class EsInterfaceBorder<TColor, TOpacity, TRadius, TWidth> : IEsModifier
-        where TColor : notnull, IEnumerable<IEsColor>, new()
-        where TOpacity : notnull, IEnumerable<float>, new()
-        where TRadius : notnull, IEnumerable<float>, new()
-        where TWidth : notnull, IEnumerable<float>, new()
-    {
-        // Properties and Fields
-
-        private IEsInstance? _parent;
-        private bool _active;
-        private TColor _color;
-        private TOpacity _opacity;
-        private TRadius _radius;
-        private TWidth _width;
-
-        public IEsInstance? Parent
-        {
-            get => _parent;
-            set
-            {
-                if (_parent == value) return;
-
-                if (_parent?.HasModifier(this) ?? false)
-                {
-                    if (EsConfigs.Log) Console.WriteLine($"Can not add EsInterfaceBorder to {_parent}, {_parent} already has EsInterfaceBorder."); return;
-                }
-        
-                _parent?.RemoveModifier(this);
-        
-                _parent = value;
-        
-                if (_parent != null)
-                {
-                    bool isAncestor = false;
-                    IEsInstance? current = _parent;
-
-                    while (current != null)
-                    {
-                        if (current == _parent)
-                        {
-                            isAncestor = true;
-                            
-                            break;
-                        }
-                        
-                        current = current.Parent;
-                    }
-                    
-                    if (isAncestor)
-                    {
-                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
-                    }
-            
-                    _parent.AddModifier(this);
-                }
-            }
-        }
-        
-        public bool Active { get => _active; set => _active = value; }
-
-        public string ModifierName { get => "EsInterfaceBorder"; }
-
-        public TColor Color { get => _color; set => _color = value; }
-        
-        public TOpacity Opacity { get => _opacity; set => _opacity = value; }
-        
-        public TRadius Radius { get => _radius; set => _radius = value; }
-        
-        public TWidth Width { get => _width; set => _width = value; }
-        
-        // Constructors and Methods
-    
-        public EsInterfaceBorder(IEsInterface? parent = null)
-        {
-            _parent = parent;
-            _active = true;
-            _color = new TColor();
-            _opacity = new TOpacity();
-            _radius = new TRadius();
-            _width = new TWidth();
-
-            if (parent != null)
-            {
-                parent.AddModifier(this);
-            }
-        }
-    
-        public override string ToString()
-        {
-            return $"(EsInterfaceBorder)";
-        }
-    }
-
-    public class EsInterfaceCorner<TRadius> : IEsModifier
-        where TRadius : notnull, IEnumerable<float>, new()
-    {
-        // Properties and Fields
-
-        private IEsInstance? _parent;
-        private bool _active;
-        private TRadius _radius;
-
-        public IEsInstance? Parent
-        {
-            get => _parent;
-            set
-            {
-                if (_parent == value) return;
-
-                if (_parent?.HasModifier(this) ?? false)
-                {
-                    if (EsConfigs.Log) Console.WriteLine($"Can not add EsInterfaceCorner to {_parent}, {_parent} already has EsInterfaceCorner."); return;
-                }
-        
-                _parent?.RemoveModifier(this);
-        
-                _parent = value;
-        
-                if (_parent != null)
-                {
-                    bool isAncestor = false;
-                    IEsInstance? current = _parent;
-
-                    while (current != null)
-                    {
-                        if (current == _parent)
-                        {
-                            isAncestor = true;
-                            
-                            break;
-                        }
-                        
-                        current = current.Parent;
-                    }
-                    
-                    if (isAncestor)
-                    {
-                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
-                    }
-            
-                    _parent.AddModifier(this);
-                }
-            }
-        }
-        
-        public bool Active { get => _active; set => _active = value; }
-
-        public string ModifierName { get => "EsInterfaceCorner"; }
-        
-        public TRadius Radius { get => _radius; set => _radius = value; }
-        
-        // Constructors and Methods
-    
-        public EsInterfaceCorner(IEsInterface? parent = null)
-        {
-            _parent = parent;
-            _active = true;
-            _radius = new TRadius();
-
-            if (parent != null)
-            {
-                if (!parent.HasModifier(this)) parent.AddModifier(this);
-                else Console.WriteLine($"Espresso: Couldn't add EsInterfaceCorner to {parent}, {parent} already has EsInterfaceCorner.");
-            }
-        }
-    
-        public override string ToString()
-        {
-            return $"(EsInterfaceCorner)";
-        }
+        public List<(int Start, int End)> GetLines();
     }
 
     public class EsFrame : IEsInterface
@@ -573,7 +379,7 @@ namespace Espresso.EspInterface
             return _tags.Contains(tag);
         }
 
-        public IEsDrawing? Render()
+        public EsDrawInfo? Render()
         {
             if (_parent == null || (_parent.GetType() != typeof(EsWindow) && !typeof(IEsInterface).IsAssignableFrom(_parent.GetType()))) return null;
 
@@ -604,8 +410,14 @@ namespace Espresso.EspInterface
             );
             _absoluteSize = size;
             _absolutePosition = parentPosition + position;
+            (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = EsRectangle.Calculate(size, position, _rotation);
+            EsDrawInfo drawInfo = new(_backgroundColor);
 
-            return new EsRectangle(size, position, _rotation, _backgroundColor);
+            foreach (EsVector2<float> point in calculated.points) drawInfo.Points.Add(new() { Position = new(point.X, point.Y) });
+
+            foreach ((int start, int end) line in calculated.lines) drawInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
+
+            return drawInfo;
         }
 
         public override string ToString()
@@ -624,7 +436,7 @@ namespace Espresso.EspInterface
         private float _rotation;
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
-        private List<(EsVector2<float> start, EsVector2<float> end)> _lines;
+        private List<(int start, int end)> _lines;
 
         public EsTriangleType Type
         {
@@ -632,7 +444,7 @@ namespace Espresso.EspInterface
             set
             {
                 _type = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(
                     value, _size, _position, _rotation
                 );
                 _points = calculated.points;
@@ -645,7 +457,7 @@ namespace Espresso.EspInterface
             set
             {
                 _size = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(
                     _type, value, _position, _rotation
                 );
                 _points = calculated.points;
@@ -660,7 +472,7 @@ namespace Espresso.EspInterface
             set
             {
                 _position = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(
                     _type, _size, value, _rotation
                 );
                 _points = calculated.points;
@@ -674,7 +486,7 @@ namespace Espresso.EspInterface
             set
             {
                 _rotation = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(
                     _type, _size, _position, value
                 );
                 _points = calculated.points;
@@ -693,7 +505,7 @@ namespace Espresso.EspInterface
             _position = position ?? new();
             _rotation = float.Clamp(rotation, -360, 360);
             _fill = fill ?? new EsColor3(EsColors.White);
-            (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(
+            (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(
                 type, _size, _position, rotation
             );
             _points = calculated.points;
@@ -706,17 +518,17 @@ namespace Espresso.EspInterface
             return new(_points);
         }
 
-        public List<(EsVector2<float> Start, EsVector2<float> End)> GetLines()
+        public List<(int Start, int End)> GetLines()
         {
             return new(_lines);
         }
 
-        public static (List<EsVector2<float>> Points, List<(EsVector2<float> Start, EsVector2<float> End)> Lines) Calculate(
+        public static (List<EsVector2<float>> Points, List<(int Start, int End)> Lines) Calculate(
             EsTriangleType type, EsVector2<float> size, EsVector2<float> position, float rotation
         )
         {
             List<EsVector2<float>> points = new();
-            List<(EsVector2<float> start, EsVector2<float> end)> lines = new();
+            List<(int start, int end)> lines = new() { (0, 1), (1, 2), (2, 0) };
             
             if (type == EsTriangleType.Acute)
             {
@@ -805,11 +617,6 @@ namespace Espresso.EspInterface
                 );
             }
             
-            lines.Clear();
-            lines.Add((points[0], points[1]));
-            lines.Add((points[1], points[2]));
-            lines.Add((points[2], points[0]));
-            
             return (points, lines);
         }
 
@@ -829,7 +636,7 @@ namespace Espresso.EspInterface
         private float _rotation;
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
-        private List<(EsVector2<float> start, EsVector2<float> end)> _lines;
+        private List<(int start, int end)> _lines;
 
         public EsVector2<float> Size
         {
@@ -837,7 +644,7 @@ namespace Espresso.EspInterface
             set
             {
                 _size = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(value, _position, _rotation);
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(value, _position, _rotation);
                 _points = calculated.points;
                 _lines = calculated.lines;
             }
@@ -849,7 +656,7 @@ namespace Espresso.EspInterface
             set
             {
                 _position = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, value, _rotation);
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(_size, value, _rotation);
                 _points = calculated.points;
                 _lines = calculated.lines;
             }
@@ -862,7 +669,7 @@ namespace Espresso.EspInterface
             set
             {
                 _rotation = value;
-                (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, _position, value);
+                (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(_size, _position, value);
                 _points = calculated.points;
                 _lines = calculated.lines;
             }
@@ -878,7 +685,7 @@ namespace Espresso.EspInterface
             _position = position ?? new();
             _rotation = float.Clamp(rotation, -360, 360);
             _fill = fill ?? new EsColor3(EsColors.White);
-            (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, _position, _rotation);
+            (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = Calculate(_size, _position, _rotation);
             _points = calculated.points;
             _lines = calculated.lines;
         }
@@ -888,17 +695,17 @@ namespace Espresso.EspInterface
             return new(_points);
         }
 
-        public List<(EsVector2<float> Start, EsVector2<float> End)> GetLines()
+        public List<(int Start, int End)> GetLines()
         {
             return new(_lines);
         }
 
-        public static (List<EsVector2<float>> Points, List<(EsVector2<float> Start, EsVector2<float> End)> Lines) Calculate(
+        public static (List<EsVector2<float>> Points, List<(int Start, int End)> Lines) Calculate(
             EsVector2<float> size, EsVector2<float> position, float rotation
         )
         {
             List<EsVector2<float>> points = new();
-            List<(EsVector2<float> start, EsVector2<float> end)> lines = new();
+            List<(int start, int end)> lines = new() { (0, 1), (1, 2), (2, 3), (3, 0) };
             EsVector2<float> p1 = new();
             EsVector2<float> p2 = new(size.X, 0);
             EsVector2<float> p3 = new(size.X, size.Y);
@@ -933,12 +740,6 @@ namespace Espresso.EspInterface
                     points[i].Y + position.Y
                 );
             }
-            
-            lines.Clear();
-            lines.Add((points[0], points[1]));
-            lines.Add((points[1], points[2]));
-            lines.Add((points[2], points[3]));
-            lines.Add((points[3], points[0]));
             
             return (points, lines);
         }

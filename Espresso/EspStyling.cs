@@ -1,4 +1,9 @@
-﻿// Styling Namespace
+﻿// Imports
+
+using Espresso.EspInstance;
+using Espresso.EspInterface;
+
+// Styling Namespace
 
 namespace Espresso.EspStyling
 {
@@ -615,6 +620,178 @@ namespace Espresso.EspStyling
         public override string ToString()
         {
             return $"(EsColor3 Hex=0x{_hex:x8} Argb=({String.Join(", ", _argb)}))";
+        }
+    }
+    
+    public class EsInterfaceBorder<TColor, TOpacity, TRadius, TWidth> : IEsModifier
+        where TColor : notnull, IEnumerable<IEsColor>, new()
+        where TOpacity : notnull, IEnumerable<float>, new()
+        where TRadius : notnull, IEnumerable<float>, new()
+        where TWidth : notnull, IEnumerable<float>, new()
+    {
+        // Properties and Fields
+
+        private IEsInstance? _parent;
+        private bool _active;
+        private TColor _color;
+        private TOpacity _opacity;
+        private TRadius _radius;
+        private TWidth _width;
+
+        public IEsInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value) return;
+
+                if (_parent?.HasModifier(this) ?? false)
+                {
+                    if (EsConfigs.Log) Console.WriteLine($"Can not add EsInterfaceBorder to {_parent}, {_parent} already has EsInterfaceBorder."); return;
+                }
+        
+                _parent?.RemoveModifier(this);
+        
+                _parent = value;
+        
+                if (_parent != null)
+                {
+                    bool isAncestor = false;
+                    IEsInstance? current = _parent;
+
+                    while (current != null)
+                    {
+                        if (current == _parent)
+                        {
+                            isAncestor = true;
+                            
+                            break;
+                        }
+                        
+                        current = current.Parent;
+                    }
+                    
+                    if (isAncestor)
+                    {
+                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
+                    }
+            
+                    _parent.AddModifier(this);
+                }
+            }
+        }
+        
+        public bool Active { get => _active; set => _active = value; }
+
+        public string ModifierName { get => "EsInterfaceBorder"; }
+
+        public TColor Color { get => _color; set => _color = value; }
+        
+        public TOpacity Opacity { get => _opacity; set => _opacity = value; }
+        
+        public TRadius Radius { get => _radius; set => _radius = value; }
+        
+        public TWidth Width { get => _width; set => _width = value; }
+        
+        // Constructors and Methods
+    
+        public EsInterfaceBorder(IEsInterface? parent = null)
+        {
+            _parent = parent;
+            _active = true;
+            _color = new TColor();
+            _opacity = new TOpacity();
+            _radius = new TRadius();
+            _width = new TWidth();
+
+            if (parent != null)
+            {
+                parent.AddModifier(this);
+            }
+        }
+    
+        public override string ToString()
+        {
+            return $"(EsInterfaceBorder)";
+        }
+    }
+
+    public class EsInterfaceCorner<TRadius> : IEsModifier
+        where TRadius : notnull, IEnumerable<float>, new()
+    {
+        // Properties and Fields
+
+        private IEsInstance? _parent;
+        private bool _active;
+        private TRadius _radius;
+
+        public IEsInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value) return;
+
+                if (_parent?.HasModifier(this) ?? false)
+                {
+                    if (EsConfigs.Log) Console.WriteLine($"Can not add EsInterfaceCorner to {_parent}, {_parent} already has EsInterfaceCorner."); return;
+                }
+        
+                _parent?.RemoveModifier(this);
+        
+                _parent = value;
+        
+                if (_parent != null)
+                {
+                    bool isAncestor = false;
+                    IEsInstance? current = _parent;
+
+                    while (current != null)
+                    {
+                        if (current == _parent)
+                        {
+                            isAncestor = true;
+                            
+                            break;
+                        }
+                        
+                        current = current.Parent;
+                    }
+                    
+                    if (isAncestor)
+                    {
+                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
+                    }
+            
+                    _parent.AddModifier(this);
+                }
+            }
+        }
+        
+        public bool Active { get => _active; set => _active = value; }
+
+        public string ModifierName { get => "EsInterfaceCorner"; }
+        
+        public TRadius Radius { get => _radius; set => _radius = value; }
+        
+        // Constructors and Methods
+    
+        public EsInterfaceCorner(IEsInterface? parent = null)
+        {
+            _parent = parent;
+            _active = true;
+            _radius = new TRadius();
+
+            if (parent != null)
+            {
+                if (!parent.HasModifier(this)) parent.AddModifier(this);
+                else Console.WriteLine($"Espresso: Couldn't add EsInterfaceCorner to {parent}, {parent} already has EsInterfaceCorner.");
+            }
+        }
+    
+        public override string ToString()
+        {
+            return $"(EsInterfaceCorner)";
         }
     }
 }

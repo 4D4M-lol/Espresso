@@ -1,6 +1,4 @@
 ﻿using Espresso;
-using Espresso.EspInterface;
-using Espresso.EspMath;
 
 namespace Example
 {
@@ -8,8 +6,7 @@ namespace Example
     {
         public static void Main(string[] args)
         {
-            EsWindow window = new(null, new(800, 800));
-            EsFrame frame = new(window);
+            EsWindow window = new();
             
             window.Run();
         }
