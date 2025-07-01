@@ -360,7 +360,7 @@ namespace Espresso.EspStyling
         // Properties
         
         public bool HasAlpha { get; }
-        public uint Hex { get; set;  }
+        public uint Hex { get;  }
     }
     
     // Classes
@@ -388,25 +388,9 @@ namespace Espresso.EspStyling
 
         public bool HasAlpha { get; } = false;
 
-        public uint Hex
-        {
-            get => _hex;
-            set
-            {
-                _hex = uint.Clamp(value, 0, 0xFFFFFF);
-                _rgb = ((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
-            }
-        }
+        public uint Hex { get => _hex; }
 
-        public (byte Red, byte Green, byte Blue) Rgb
-        {
-            get => _rgb;
-            set
-            {
-                _hex = (uint)((value.Red << 16) | (value.Green << 8) | value.Blue);
-                _rgb = (value.Red, value.Green, value.Blue);
-            }
-        }
+        public (byte Red, byte Green, byte Blue) Rgb { get => _rgb; }
         
         // Constructors and Methods
 
@@ -524,25 +508,9 @@ namespace Espresso.EspStyling
 
         public bool HasAlpha { get; } = true;
 
-        public uint Hex
-        {
-            get => _hex;
-            set
-            {
-                _hex = uint.Clamp(value, 0, 0xFFFFFF);
-                _argb = ((byte)((value >> 24) & 0xFF), (byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
-            }
-        }
+        public uint Hex { get => _hex; }
 
-        public (byte Alpha, byte Red, byte Green, byte Blue) Argb
-        {
-            get => _argb;
-            set
-            {
-                _hex = (uint)((value.Red << 24) | (value.Red << 16) | (value.Green << 8) | value.Blue);
-                _argb = (value.Alpha, value.Red, value.Green, value.Blue);
-            }
-        }
+        public (byte Alpha, byte Red, byte Green, byte Blue) Argb { get => _argb; }
         
         // Constructors and Methods
 

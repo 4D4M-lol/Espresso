@@ -71,6 +71,26 @@ namespace Espresso.EspInterface
     }
     
     // Classes
+
+    public class EsDrawInfo
+    {
+        // Properties and Fields
+        
+        private List<EsVector3<float>> _points;
+        private List<(EsVector3<float> start, EsVector3<float> end, float thickness)> _lines;
+        
+        public List<EsVector3<float>> Points { get => _points; }
+        
+        public List<(EsVector3<float> Start, EsVector3<float> End, float Thickness)> Lines { get => _lines; }
+        
+        // Constructors and Methods
+
+        public EsDrawInfo(List<EsVector3<float>>? points = null, List<(EsVector3<float> start, EsVector3<float> end)>? lines = null)
+        {
+            _points = points ?? new();
+            _lines = lines ?? new();
+        }
+    }
     
     public class EsInterfaceBorder<TColor, TOpacity, TRadius, TWidth> : IEsModifier
         where TColor : notnull, IEnumerable<IEsColor>, new()
@@ -604,7 +624,7 @@ namespace Espresso.EspInterface
         private float _rotation;
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
-        private List<(EsVector2<float> s, EsVector2<float> e)> _lines;
+        private List<(EsVector2<float> start, EsVector2<float> end)> _lines;
 
         public EsTriangleType Type
         {
@@ -809,7 +829,7 @@ namespace Espresso.EspInterface
         private float _rotation;
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
-        private List<(EsVector2<float> s, EsVector2<float> e)> _lines;
+        private List<(EsVector2<float> start, EsVector2<float> end)> _lines;
 
         public EsVector2<float> Size
         {
