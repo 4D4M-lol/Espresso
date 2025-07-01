@@ -17,7 +17,7 @@ namespace Espresso.EspFile
         
         // Properties
         
-        public EsPath Path { get; set; }
+        public EsPath Path { get; }
     }
     
     // Classes
@@ -77,17 +77,7 @@ namespace Espresso.EspFile
         private EsVector2<int> _size;
         private uint[] _pixels;
 
-        public EsPath Path
-        {
-            get => _path;
-            set
-            {
-                (EsVector2<int> size, uint[] pixels) = Load(value);
-                _path = value;
-                _size = size;
-                _pixels = pixels;
-            }
-        }
+        public EsPath Path { get => _path; }
         
         public EsVector2<int> Size { get => _size; }
         

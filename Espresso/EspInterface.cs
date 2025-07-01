@@ -63,28 +63,26 @@ namespace Espresso.EspInterface
         public EsVector2<float> Position { get; set; }
         public float Rotation { get; set; }
         public IEsColor Fill { get; set; }
-        public EsSignal<Action<IEsModifier>> OnModifierAdded { get; }
-        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get; }
         
         // Methods
 
-        public List<IEsModifier> GetModifiers();
-        public void AddModifier(IEsModifier modifier);
-        public void RemoveModifier(IEsModifier modifier);
-        public bool HasModifier(IEsModifier modifier);
         public List<EsVector2<float>> GetPoints();
         public List<(EsVector2<float> Start, EsVector2<float> End)> GetLines();
     }
     
     // Classes
     
-    public class EsInterfaceBorder<TOpacity, TRadius, TWidth> : IEsModifier where TOpacity : IEnumerable<float> where TRadius : IEnumerable<float> where TWidth : IEnumerable<float>
+    public class EsInterfaceBorder<TColor, TOpacity, TRadius, TWidth> : IEsModifier
+        where TColor : notnull, IEnumerable<IEsColor>, new()
+        where TOpacity : notnull, IEnumerable<float>, new()
+        where TRadius : notnull, IEnumerable<float>, new()
+        where TWidth : notnull, IEnumerable<float>, new()
     {
         // Properties and Fields
 
         private IEsInstance? _parent;
         private bool _active;
-        private (IEsColor b, IEsColor l, IEsColor r, IEsColor t) _color;
+        private TColor _color;
         private TOpacity _opacity;
         private TRadius _radius;
         private TWidth _width;
@@ -96,18 +94,39 @@ namespace Espresso.EspInterface
             {
                 if (_parent == value) return;
 
-                if (_parent.HasModifier(this))
+                if (_parent?.HasModifier(this) ?? false)
                 {
-                    if (EsConfigs.Log) Console.WriteLine($"Espresso: Couldn't add EsInterfaceBorder to {_parent}, {_parent} already has EsInterfaceBorder.");
-                    
-                    return;
+                    if (EsConfigs.Log) Console.WriteLine($"Can not add EsInterfaceBorder to {_parent}, {_parent} already has EsInterfaceBorder."); return;
                 }
-
-                if (_parent != null) _parent.RemoveModifier(this);
-
+        
+                _parent?.RemoveModifier(this);
+        
                 _parent = value;
+        
+                if (_parent != null)
+                {
+                    bool isAncestor = false;
+                    IEsInstance? current = _parent;
 
-                if (_parent != null) _parent.AddModifier(this);
+                    while (current != null)
+                    {
+                        if (current == _parent)
+                        {
+                            isAncestor = true;
+                            
+                            break;
+                        }
+                        
+                        current = current.Parent;
+                    }
+                    
+                    if (isAncestor)
+                    {
+                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
+                    }
+            
+                    _parent.AddModifier(this);
+                }
             }
         }
         
@@ -115,7 +134,7 @@ namespace Espresso.EspInterface
 
         public string ModifierName { get => "EsInterfaceBorder"; }
 
-        public (IEsColor Bottom, IEsColor Left, IEsColor Right, IEsColor Top) Color { get => _color; set => _color = value; }
+        public TColor Color { get => _color; set => _color = value; }
         
         public TOpacity Opacity { get => _opacity; set => _opacity = value; }
         
@@ -129,15 +148,14 @@ namespace Espresso.EspInterface
         {
             _parent = parent;
             _active = true;
-            _color = (EsColor3.Black, EsColor3.Black, EsColor3.Black, EsColor3.Black);
-            _opacity = new TOpacity() { 1f, 1f, 1f, 1f};
-            _radius = (0f, 0f, 0f, 0f);
-            _width = (5f, 5f, 5f, 5f);
+            _color = new TColor();
+            _opacity = new TOpacity();
+            _radius = new TRadius();
+            _width = new TWidth();
 
             if (parent != null)
             {
-                if (!parent.HasModifier(this)) parent.AddModifier(this);
-                else Console.WriteLine($"Espresso: Couldn't add EsInterfaceBorder to {parent}, {parent} already has EsInterfaceBorder.");
+                parent.AddModifier(this);
             }
         }
     
@@ -147,13 +165,14 @@ namespace Espresso.EspInterface
         }
     }
 
-    public class EsInterfaceCorner : IEsModifier
+    public class EsInterfaceCorner<TRadius> : IEsModifier
+        where TRadius : notnull, IEnumerable<float>, new()
     {
         // Properties and Fields
 
         private IEsInstance? _parent;
         private bool _active;
-        private (float b, float l, float r, float t) _radius;
+        private TRadius _radius;
 
         public IEsInstance? Parent
         {
@@ -162,18 +181,39 @@ namespace Espresso.EspInterface
             {
                 if (_parent == value) return;
 
-                if (_parent.HasModifier(this))
+                if (_parent?.HasModifier(this) ?? false)
                 {
-                    if (EsConfigs.Log) Console.WriteLine($"Espresso: Couldn't add EsInterfaceCorner to {_parent}, {_parent} already has EsInterfaceCorner.");
-                    
-                    return;
+                    if (EsConfigs.Log) Console.WriteLine($"Can not add EsInterfaceCorner to {_parent}, {_parent} already has EsInterfaceCorner."); return;
                 }
-
-                if (_parent != null) _parent.RemoveModifier(this);
-
+        
+                _parent?.RemoveModifier(this);
+        
                 _parent = value;
+        
+                if (_parent != null)
+                {
+                    bool isAncestor = false;
+                    IEsInstance? current = _parent;
 
-                if (_parent != null) _parent.AddModifier(this);
+                    while (current != null)
+                    {
+                        if (current == _parent)
+                        {
+                            isAncestor = true;
+                            
+                            break;
+                        }
+                        
+                        current = current.Parent;
+                    }
+                    
+                    if (isAncestor)
+                    {
+                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
+                    }
+            
+                    _parent.AddModifier(this);
+                }
             }
         }
         
@@ -181,7 +221,7 @@ namespace Espresso.EspInterface
 
         public string ModifierName { get => "EsInterfaceCorner"; }
         
-        public (float Bottom, float Left, float Right, float Top) Radius { get => _radius; set => _radius = value; }
+        public TRadius Radius { get => _radius; set => _radius = value; }
         
         // Constructors and Methods
     
@@ -189,7 +229,7 @@ namespace Espresso.EspInterface
         {
             _parent = parent;
             _active = true;
-            _radius = (0f, 0f, 0f, 0f);
+            _radius = new TRadius();
 
             if (parent != null)
             {
@@ -236,12 +276,35 @@ namespace Espresso.EspInterface
             set
             {
                 if (_parent == value) return;
-
-                if (_parent != null) _parent.RemoveChild(this);
-
+        
+                _parent?.RemoveChild(this);
+        
                 _parent = value;
+        
+                if (_parent != null)
+                {
+                    bool isAncestor = false;
+                    IEsInstance? current = _parent;
 
-                if (_parent != null) _parent.AddChild(this);
+                    while (current != null)
+                    {
+                        if (current == _parent)
+                        {
+                            isAncestor = true;
+                            
+                            break;
+                        }
+                        
+                        current = current.Parent;
+                    }
+                    
+                    if (isAncestor)
+                    {
+                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
+                    }
+            
+                    _parent.AddChild(this);
+                }
             }
         }
         
@@ -382,22 +445,19 @@ namespace Espresso.EspInterface
         {
             return new(_modifiers);
         }
-
+        
         public void AddModifier(IEsModifier modifier)
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
 
-            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
-
-            if (modifier.Parent != this)
+            if (_modifiers.Contains(modifier))
             {
-                Type childType = modifier.GetType();
-                
-                childType.GetField("_parent")?.SetValue(modifier, this);
+                if (EsConfigs.Log) Console.WriteLine($"Can not add {modifier.ModifierName} to {this}, {this} already has {modifier.ModifierName}.");
             }
 
+            modifier.Parent = this;
+            
             _modifiers.Add(modifier);
-            _rectangle.AddModifier(modifier);
             _onModifierAdded.Emit(modifier);
         }
 
@@ -405,17 +465,11 @@ namespace Espresso.EspInterface
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+            if (!_modifiers.Contains(modifier)) return;
 
-            if (modifier.Parent == this)
-            {
-                Type childType = modifier.GetType();
-                
-                childType.GetField("_parent")?.SetValue(modifier, null);
-            }
-
+            if (modifier.Parent == this) modifier.Parent = null;
+            
             _modifiers.Remove(modifier);
-            _rectangle.RemoveModifier(modifier);
             _onModifierRemoved.Emit(modifier);
         }
 
@@ -432,16 +486,13 @@ namespace Espresso.EspInterface
         public void AddChild(IEsInstance child)
         {
             if (child == null) throw new ArgumentNullException(nameof(child));
+            
+            if (child == this) throw new ArgumentException("Cannot add self as child.");
 
             if (_children.Contains(child)) return;
 
-            if (child.Parent != this)
-            {
-                Type childType = child.GetType();
-                
-                childType.GetField("_parent")?.SetValue(child, this);
-            }
-
+            child.Parent = this;
+            
             _children.Add(child);
             _onChildAdded.Emit(child);
         }
@@ -450,15 +501,12 @@ namespace Espresso.EspInterface
         {
             if (child == null) throw new ArgumentNullException(nameof(child));
             
+            if (child == this) throw new ArgumentException("Cannot remove self as child.");
+            
             if (!_children.Contains(child)) return;
 
-            if (child.Parent == this)
-            {
-                Type childType = child.GetType();
-                
-                childType.GetField("_parent")?.SetValue(child, null);
-            }
-
+            if (child.Parent == this) child.Parent = null;
+            
             _children.Remove(child);
             _onChildRemoved.Emit(child);
         }
@@ -550,7 +598,6 @@ namespace Espresso.EspInterface
     {
         // Properties and Fields
         
-        private List<IEsModifier> _modifiers;
         private EsTriangleType _type;
         private EsVector2<float> _size;
         private EsVector2<float> _position;
@@ -558,8 +605,6 @@ namespace Espresso.EspInterface
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
         private List<(EsVector2<float> s, EsVector2<float> e)> _lines;
-        private EsSignal<Action<IEsModifier>> _onModifierAdded;
-        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
 
         public EsTriangleType Type
         {
@@ -619,10 +664,6 @@ namespace Espresso.EspInterface
         
         public IEsColor Fill { get => _fill; set => _fill = value; }
 
-        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
-
-        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
-
         // Constructors and Methods
 
         public EsTriangle(EsTriangleType type = EsTriangleType.Acute, EsVector2<float>? size = null, EsVector2<float>? position = null, float rotation = 0, IEsColor? fill = null)
@@ -637,36 +678,6 @@ namespace Espresso.EspInterface
             );
             _points = calculated.points;
             _lines = calculated.lines;
-        }
-
-        public List<IEsModifier> GetModifiers()
-        {
-            return new(_modifiers);
-        }
-
-        public void AddModifier(IEsModifier modifier)
-        {
-            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
-
-            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
-
-            _modifiers.Add(modifier);
-            _onModifierAdded.Emit(modifier);
-        }
-
-        public void RemoveModifier(IEsModifier modifier)
-        {
-            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
-            
-            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
-
-            _modifiers.Remove(modifier);
-            _onModifierRemoved.Emit(modifier);
-        }
-
-        public bool HasModifier(IEsModifier modifier)
-        {
-            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
         }
 
         public List<EsVector2<float>> GetPoints()
@@ -799,8 +810,6 @@ namespace Espresso.EspInterface
         private IEsColor _fill;
         private List<EsVector2<float>> _points;
         private List<(EsVector2<float> s, EsVector2<float> e)> _lines;
-        private EsSignal<Action<IEsModifier>> _onModifierAdded;
-        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
 
         public EsVector2<float> Size
         {
@@ -840,10 +849,6 @@ namespace Espresso.EspInterface
         }
         
         public IEsColor Fill { get => _fill; set => _fill = value; }
-
-        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
-
-        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
         
         // Constructors and Methods
 
@@ -856,36 +861,6 @@ namespace Espresso.EspInterface
             (List<EsVector2<float>> points, List<(EsVector2<float> start, EsVector2<float> end)> lines) calculated = Calculate(_size, _position, _rotation);
             _points = calculated.points;
             _lines = calculated.lines;
-        }
-
-        public List<IEsModifier> GetModifiers()
-        {
-            return new(_modifiers);
-        }
-
-        public void AddModifier(IEsModifier modifier)
-        {
-            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
-
-            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
-
-            _modifiers.Add(modifier);
-            _onModifierAdded.Emit(modifier);
-        }
-
-        public void RemoveModifier(IEsModifier modifier)
-        {
-            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
-            
-            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
-
-            _modifiers.Remove(modifier);
-            _onModifierRemoved.Emit(modifier);
-        }
-
-        public bool HasModifier(IEsModifier modifier)
-        {
-            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
         }
 
         public List<EsVector2<float>> GetPoints()

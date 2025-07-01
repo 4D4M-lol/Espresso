@@ -272,6 +272,7 @@ namespace Espresso
 
         public EsWindow(string? name = null, EsVector2<int>? size = null, EsVector2<int>? position = null)
         {
+            _modifiers = new();
             _children = new();
             _tags = new();
             _closeOperation = EsCloseOperation.Close;
@@ -287,6 +288,8 @@ namespace Espresso
             _onWindowFullscreen = new();
             _onResize = new();
             _onMove = new();
+            _onModifierAdded = new();
+            _onModifierRemoved = new();
             _onChildAdded = new();
             _onChildRemoved = new();
             Action<IntPtr> create = (IntPtr _) =>
@@ -314,7 +317,7 @@ namespace Espresso
                     
                     _position = new EsVector2<int>(x, y);
                 }
-                
+
                 _eventFilter = (IntPtr _, ref SDL.Event ev) =>
                 {
                     if (ev.Window.WindowID == SDL.GetWindowID(_window))
@@ -336,17 +339,19 @@ namespace Espresso
                         {
                             Render();
                             SDL.GetWindowSize(_window, out int w, out int h);
-                            _onResize.Emit(new EsVector2<int>(w, h));
-                                
+                            
                             _size = new EsVector2<int>(w, h);
+                            
+                            _onResize.Emit(new EsVector2<int>(w, h));
                         }
                         else if (ev.Type == (uint)SDL.EventType.WindowMoved)
                         {
                             Render();
                             SDL.GetWindowPosition(_window, out int x, out int y);
-                            _onMove.Emit(new EsVector2<int>(x, y));
-                                
+                            
                             _position = new EsVector2<int>(x, y);
+                            
+                            _onMove.Emit(new EsVector2<int>(x, y));
                         }
                         else if (ev.Type == (uint)SDL.EventType.WindowRestored)
                         {
@@ -509,15 +514,13 @@ namespace Espresso
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
 
-            if (_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
-
-            if (modifier.Parent != this)
+            if (_modifiers.Contains(modifier))
             {
-                Type childType = modifier.GetType();
-                
-                childType.GetField("_parent")?.SetValue(modifier, this);
+                if (EsConfigs.Log) Console.WriteLine($"Can not add {modifier.ModifierName} to {this}, {this} already has {modifier.ModifierName}.");
             }
 
+            modifier.Parent = this;
+            
             _modifiers.Add(modifier);
             _onModifierAdded.Emit(modifier);
         }
@@ -526,15 +529,10 @@ namespace Espresso
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            if (!_modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName)) return;
+            if (!_modifiers.Contains(modifier)) return;
 
-            if (modifier.Parent == this)
-            {
-                Type childType = modifier.GetType();
-                
-                childType.GetField("_parent")?.SetValue(modifier, null);
-            }
-
+            if (modifier.Parent == this) modifier.Parent = null;
+            
             _modifiers.Remove(modifier);
             _onModifierRemoved.Emit(modifier);
         }
@@ -552,16 +550,13 @@ namespace Espresso
         public void AddChild(IEsInstance child)
         {
             if (child == null) throw new ArgumentNullException(nameof(child));
+            
+            if (child == this) throw new ArgumentException("Cannot add self as child.");
 
             if (_children.Contains(child)) return;
 
-            if (child.Parent != this)
-            {
-                Type childType = child.GetType();
-                
-                childType.GetField("_parent")?.SetValue(child, this);
-            }
-
+            child.Parent = this;
+            
             _children.Add(child);
             _onChildAdded.Emit(child);
         }
@@ -570,15 +565,12 @@ namespace Espresso
         {
             if (child == null) throw new ArgumentNullException(nameof(child));
             
+            if (child == this) throw new ArgumentException("Cannot remove self as child.");
+            
             if (!_children.Contains(child)) return;
 
-            if (child.Parent == this)
-            {
-                Type childType = child.GetType();
-                
-                childType.GetField("_parent")?.SetValue(child, null);
-            }
-
+            if (child.Parent == this) child.Parent = null;
+            
             _children.Remove(child);
             _onChildRemoved.Emit(child);
         }

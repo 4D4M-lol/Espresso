@@ -9,7 +9,8 @@ namespace Espresso.EspMath
 {
     // Classes
 
-    public class EsVector2<TNumber> where TNumber : INumber<TNumber>
+    public class EsVector2<TNumber>
+        where TNumber : INumber<TNumber>
     {
         // Statics
         
@@ -22,12 +23,12 @@ namespace Espresso.EspMath
         
         // Properties and Fields
 
-        private TNumber _x;
-        private TNumber _y;
+        private readonly TNumber _x;
+        private readonly TNumber _y;
 
-        public TNumber X { get => _x; set => _x = value; }
+        public TNumber X { get => _x; }
         
-        public TNumber Y { get => _y; set => _y = value; }
+        public TNumber Y { get => _y; }
         
         public double Magnitude
         {
@@ -104,7 +105,8 @@ namespace Espresso.EspMath
         }
     }
 
-    public class EsVector3<TNumber> where TNumber : INumber<TNumber>
+    public class EsVector3<TNumber>
+        where TNumber : INumber<TNumber>
     {
         // Statics
         
@@ -119,13 +121,16 @@ namespace Espresso.EspMath
         
         // Properties and Fields
 
-        private TNumber _x;
-        private TNumber _y;
-        private TNumber _z;
+        private readonly TNumber _x;
+        private readonly TNumber _y;
+        private readonly TNumber _z;
 
-        public TNumber X { get => _x; set => _x = value; }
-        public TNumber Y { get => _y; set => _y = value; }
-        public TNumber Z { get => _z; set => _z = value; }
+        public TNumber X { get => _x; }
+        
+        public TNumber Y { get => _y; }
+        
+        public TNumber Z { get => _z; }
+        
         public double Magnitude
         {
             get
@@ -203,15 +208,18 @@ namespace Espresso.EspMath
         }
     }
 
-    public class EsLayoutVector<TScale, TOffset> where TScale : IFloatingPoint<TScale> where TOffset : IBinaryInteger<TOffset>
+    public class EsLayoutVector<TScale, TOffset>
+        where TScale : IFloatingPoint<TScale> 
+        where TOffset : IBinaryInteger<TOffset>
     {
         // Properties and Fields
 
-        private EsVector2<TScale> _scale;
-        private EsVector2<TOffset> _offset;
+        private readonly EsVector2<TScale> _scale;
+        private readonly EsVector2<TOffset> _offset;
         
-        public EsVector2<TScale> Scale { get => _scale; set => _scale = value; }
-        public EsVector2<TOffset> Offset { get => _offset; set => _offset = value; }
+        public EsVector2<TScale> Scale { get => _scale; }
+        
+        public EsVector2<TOffset> Offset { get => _offset; }
         
         // Constructors, Methods, and Functions
 
