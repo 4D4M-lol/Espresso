@@ -43,7 +43,7 @@ namespace Espresso.EspInstance
         public List<IEsInstance> DescendantsSelector(string selector);
         public List<IEsModifier> GetModifiers();
         public void AddModifier(IEsModifier modifier);
-        public void RemoveModifier(IEsModifier modifier);
+        public void RemoveModifier(string modifier);
         public bool HasModifier(string modifier);
         public List<IEsInstance> GetChildren();
         public void AddChild(IEsInstance child);

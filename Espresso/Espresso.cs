@@ -525,16 +525,23 @@ namespace Espresso
             _onModifierAdded.Emit(modifier);
         }
 
-        public void RemoveModifier(IEsModifier modifier)
+        public void RemoveModifier(string modifier)
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            if (!_modifiers.Contains(modifier)) return;
+            if (!HasModifier(modifier)) return;
 
-            if (modifier.Parent == this) modifier.Parent = null;
+            IEsModifier? mod = null;
+
+            foreach (IEsModifier mod2 in _modifiers)
+            {
+                if (mod2.ModifierName == modifier) mod = mod2; break;
+            }
+
+            if (mod.Parent == this) mod.Parent = null;
             
-            _modifiers.Remove(modifier);
-            _onModifierRemoved.Emit(modifier);
+            _modifiers.Remove(mod);
+            _onModifierRemoved.Emit(mod);
         }
 
         public bool HasModifier(string modifier)
