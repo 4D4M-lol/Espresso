@@ -643,7 +643,7 @@ namespace Espresso.EspStyling
                     if (EsConfigs.Log) Console.WriteLine($"Can not add EsSizeConstraint to {_parent}, {_parent} already has EsSizeConstraint."); return;
                 }
             
-                _parent?.RemoveModifier(this);
+                _parent?.RemoveModifier("EsSizeConstraint");
             
                 _parent = value;
             
