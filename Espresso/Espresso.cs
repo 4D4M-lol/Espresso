@@ -7,6 +7,7 @@ using Espresso.EspMath;
 using Espresso.EspScript;
 using Espresso.EspStyling;
 using SDL3;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 // Main Namespace
@@ -55,6 +56,7 @@ namespace Espresso
         private IntPtr _renderer;
         private SDL.FRect _surface;
         private SDL.EventFilter _eventFilter;
+        private Stopwatch _stopwatch;
         private List<IEsModifier> _modifiers;
         private List<IEsInstance> _children;
         private List<string> _tags;
@@ -68,6 +70,7 @@ namespace Espresso
         private IEsColor _fill;
         private float _opacity;
         private bool _running;
+        private EsSignal<Action<double>> _onRender;
         private EsSignal<Action> _onWindowRestored;
         private EsSignal<Action> _onWindowMinimized;
         private EsSignal<Action> _onWindowMaximized;
@@ -250,6 +253,8 @@ namespace Espresso
 
         public bool Running { get => _running; }
         
+        public EsSignal<Action<double>> OnRender { get => _onRender; }
+        
         public EsSignal<Action> OnWindowRestored { get => _onWindowRestored; }
         
         public EsSignal<Action> OnWindowMinimized { get => _onWindowMinimized; }
@@ -272,6 +277,7 @@ namespace Espresso
 
         public EsWindow(string? name = null, EsVector2<int>? size = null, EsVector2<int>? position = null)
         {
+            _stopwatch = new();
             _modifiers = new();
             _children = new();
             _tags = new();
@@ -282,6 +288,7 @@ namespace Espresso
             _position = position ?? new EsVector2<int>();
             _fill = new EsColor3(EsColors.White);
             _opacity = 1;
+            _onRender = new();
             _onWindowRestored = new();
             _onWindowMinimized = new();
             _onWindowMaximized = new();
@@ -626,6 +633,8 @@ namespace Espresso
 
         public EsDrawInfo? Render()
         {
+            _stopwatch.Start();
+            
             _surface.W = _size.X;
             _surface.H = _size.Y;
             
@@ -747,6 +756,9 @@ namespace Espresso
             }
             
             SDL.RenderPresent(_renderer);
+            _stopwatch.Stop();
+            _onRender.Emit(_stopwatch.Elapsed.TotalMilliseconds);
+            _stopwatch.Reset();
 
             return null;
         }
