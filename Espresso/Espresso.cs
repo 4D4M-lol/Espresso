@@ -537,9 +537,9 @@ namespace Espresso
             _onModifierRemoved.Emit(modifier);
         }
 
-        public bool HasModifier(IEsModifier modifier)
+        public bool HasModifier(string modifier)
         {
-            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
+            return _modifiers.Select(m => m.ModifierName).Contains(modifier);
         }
 
         public List<IEsInstance> GetChildren()
@@ -636,105 +636,109 @@ namespace Espresso
             SDL.SetRenderDrawColor(_renderer, r, g, b, a);
             SDL.RenderFillRect(_renderer, _surface);
 
-            foreach (IEsInstance child in _children)
+            foreach (IEsInstance descendant in GetDescendants())
             {
-                EsDrawInfo? drawInfo = child.Render();
+                EsDrawInfo? drawInfo = descendant.Render();
                 
                 if (drawInfo == null) continue;
 
-                if (drawInfo.Points.Count > 2)
+                foreach (EsShapeInfo shape in drawInfo.Shapes)
                 {
-                    uint fillHex = drawInfo.Fill.Hex;
-                    byte fillA = drawInfo.Fill.HasAlpha ? (byte)((fillHex >> 24) & 0xFF) : (byte)255;
-                    byte fillR = (byte)((fillHex >> 16) & 0xFF);
-                    byte fillG = (byte)((fillHex >> 8) & 0xFF);
-                    byte fillB = (byte)(fillHex & 0xFF);
+                    uint shapeFillHex = shape.Fill.Hex;
+                    byte shapeFillA = shape.Fill.HasAlpha ? (byte)((shapeFillHex >> 24) & 0xFF) : (byte)255;
+                    byte shapeFillR = (byte)((shapeFillHex >> 16) & 0xFF);
+                    byte shapeFillG = (byte)((shapeFillHex >> 8) & 0xFF);
+                    byte shapeFillB = (byte)(shapeFillHex & 0xFF);
                     
-                    SDL.SetRenderDrawColor(_renderer, fillR, fillG, fillB, fillA);
-                    
-                    float minY = drawInfo.Points.Min(p => p.Position.Y);
-                    float maxY = drawInfo.Points.Max(p => p.Position.Y);
-
-                    for (float y = minY; y <= maxY; y += 0.5f)
+                    if (shape.Points.Count >= 3)
                     {
-                        List<float> intersections = new();
+                        SDL.SetRenderDrawColor(_renderer, shapeFillR, shapeFillG, shapeFillB, shapeFillA);
+                        
+                        List<SDL.FPoint> sdlPoints = shape.Points
+                                                        .Select(p => new SDL.FPoint { X = p.Position.X, Y = p.Position.Y })
+                                                        .ToList();
+                        float minY = sdlPoints.Min(p => p.Y);
+                        float maxY = sdlPoints.Max(p => p.Y);
 
-                        for (int i = 0; i < drawInfo.Points.Count; i++)
+                        for (float y = minY; y <= maxY; y += 0.5f)
                         {
-                            int j = (i + 1) % drawInfo.Points.Count;
-                            var p1 = drawInfo.Points[i].Position;
-                            var p2 = drawInfo.Points[j].Position;
-                            
-                            if (p1.Y != p2.Y)
+                            List<float> intersections = new();
+
+                            for (int i = 0; i < sdlPoints.Count; i++)
                             {
-                                float minEdgeY = Math.Min(p1.Y, p2.Y);
-                                float maxEdgeY = Math.Max(p1.Y, p2.Y);
+                                int j = (i + 1) % sdlPoints.Count;
+                                SDL.FPoint p1 = sdlPoints[i];
+                                SDL.FPoint p2 = sdlPoints[j];
                                 
-                                if (y >= minEdgeY && y < maxEdgeY)
+                                if ((p1.Y <= y && p2.Y > y) || (p2.Y <= y && p1.Y > y))
                                 {
-                                    float x = p1.X + (y - p1.Y) * (p2.X - p1.X) / (p2.Y - p1.Y);
+                                    if (p1.Y != p2.Y)
+                                    {
+                                        float intersectX = p1.X + (y - p1.Y) * (p2.X - p1.X) / (p2.Y - p1.Y);
+                                        
+                                        intersections.Add(intersectX);
+                                    }
+                                }
+                            }
+
+                            intersections.Sort();
+                            
+                            for (int i = 0; i < intersections.Count - 1; i += 2)
+                            {
+                                if (i + 1 < intersections.Count)
+                                {
+                                    float startX = intersections[i];
+                                    float endX = intersections[i + 1];
                                     
-                                    intersections.Add(x);
+                                    if (Math.Abs(endX - startX) > 0.1f)
+                                    {
+                                        SDL.RenderLine(_renderer, startX, y, endX, y);
+                                    }
                                 }
                             }
                         }
-
-                        intersections.Sort();
-                        
-                        for (int i = 0; i < intersections.Count - 1; i += 2)
+                    }
+                    
+                    foreach (var point in shape.Points)
+                    {
+                        if (point.Radius > 0)
                         {
-                            if (i + 1 < intersections.Count)
+                            SDL.SetRenderDrawColor(_renderer, shapeFillR, shapeFillG, shapeFillB, shapeFillA);
+                            
+                            for (float angle = 0; angle < 360; angle += 1)
                             {
-                                float startX = intersections[i];
-                                float endX = intersections[i + 1];
+                                float rad = angle * (float)Math.PI / 180f;
+                                float x = point.Position.X + point.Radius * (float)Math.Cos(rad);
+                                float y = point.Position.Y + point.Radius * (float)Math.Sin(rad);
                                 
-                                if (Math.Abs(endX - startX) > 0.1f) SDL.RenderLine(_renderer, startX, y, endX, y);
+                                SDL.RenderPoint(_renderer, x, y);
                             }
                         }
                     }
-                }
-                
-                foreach (var point in drawInfo.Points)
-                {
-                    if (point.Radius > 0)
+                    
+                    foreach (var line in shape.Lines)
                     {
-                        uint pointHex = drawInfo.Fill.Hex;
-                        byte pointA = drawInfo.Fill.HasAlpha ? (byte)((pointHex >> 24) & 0xFF) : (byte)255;
-                        byte pointR = (byte)((pointHex >> 16) & 0xFF);
-                        byte pointG = (byte)((pointHex >> 8) & 0xFF);
-                        byte pointB = (byte)(pointHex & 0xFF);
-                        
-                        SDL.SetRenderDrawColor(_renderer, pointR, pointG, pointB, pointA);
-                        
-                        for (float angle = 0; angle < 360; angle += 1)
+                        if (line.Start >= 0 && line.Start < shape.Points.Count && 
+                            line.End >= 0 && line.End < shape.Points.Count)
                         {
-                            float rad = angle * (float)Math.PI / 180f;
-                            float x = point.Position.X + point.Radius * (float)Math.Cos(rad);
-                            float y = point.Position.Y + point.Radius * (float)Math.Sin(rad);
+                            EsVector3<float> startPoint = shape.Points[line.Start].Position;
+                            EsVector3<float> endPoint = shape.Points[line.End].Position;
+                            uint lineHex = line.Fill.Hex;
+                            byte lineR = (byte)((lineHex >> 16) & 0xFF);
+                            byte lineG = (byte)((lineHex >> 8) & 0xFF);
+                            byte lineB = (byte)(lineHex & 0xFF);
+                            byte lineA = (byte)(line.Opacity * (line.Fill.HasAlpha ? ((lineHex >> 24) & 0xFF) : 255));
                             
-                            SDL.RenderPoint(_renderer, x, y);
+                            SDL.SetRenderDrawColor(_renderer, lineR, lineG, lineB, lineA);
+                            
+                            // TODO: Implement different line types (Dotted, Dashed, etc.) based on line.Type
+                            // For now, it's just a solid line.
+                            // This would typically involve custom drawing logic (e.g., drawing short segments, skipping pixels)
+                            // based on line.Thickness and line.Type. SDL_RenderDrawLine does not support thickness or patterns.
+                            // You might need a custom Bresenham's line algorithm or a series of SDL_RenderPoint calls.
+                            
+                            SDL.RenderLine(_renderer, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
                         }
-                    }
-                }
-                
-                foreach (var line in drawInfo.Lines)
-                {
-                    if (line.Start >= 0 && line.Start < drawInfo.Points.Count && 
-                        line.End >= 0 && line.End < drawInfo.Points.Count)
-                    {
-                        var startPoint = drawInfo.Points[line.Start].Position;
-                        var endPoint = drawInfo.Points[line.End].Position;
-                        
-                        uint lineHex = line.Fill.Hex;
-                        byte lineA = (byte)(line.Opacity * (line.Fill.HasAlpha ? (lineHex >> 24) & 0xFF : 255));
-                        byte lineR = (byte)((lineHex >> 16) & 0xFF);
-                        byte lineG = (byte)((lineHex >> 8) & 0xFF);
-                        byte lineB = (byte)(lineHex & 0xFF);
-                        
-                        SDL.SetRenderDrawColor(_renderer, lineR, lineG, lineB, lineA);
-                        SDL.RenderLine(_renderer, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
-
-                        // TODO: Render different line types.
                     }
                 }
             }

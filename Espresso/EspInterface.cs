@@ -174,6 +174,7 @@ namespace Espresso.EspInterface
         {
             _rectangle = new EsRectangle(new(200, 200));
             _parent = parent;
+            _modifiers = new();
             _children = new();
             _tags = new();
             _name = name;
@@ -186,6 +187,8 @@ namespace Espresso.EspInterface
             _opacity = 1;
             _backgroundColor = new EsColor3(255, 255, 255);
             _clip = false;
+            _onModifierAdded = new();
+            _onModifierRemoved = new();
             _onChildAdded = new();
             _onChildRemoved = new();
 
@@ -299,9 +302,9 @@ namespace Espresso.EspInterface
             _onModifierRemoved.Emit(modifier);
         }
 
-        public bool HasModifier(IEsModifier modifier)
+        public bool HasModifier(string modifier)
         {
-            return _modifiers.Select(m => m.ModifierName).Contains(modifier.ModifierName);
+            return _modifiers.Select(m => m.ModifierName).Contains(modifier);
         }
 
         public List<IEsInstance> GetChildren()
@@ -386,6 +389,7 @@ namespace Espresso.EspInterface
             Type parentType = _parent.GetType();
             EsVector2<float> parentSize;
             EsVector2<float> parentPosition;
+            bool parentIsWindow = false;
 
             if (_parent.GetType() == typeof(EsWindow))
             {
@@ -393,6 +397,7 @@ namespace Espresso.EspInterface
                 EsVector2<int> windowPosition = parentType.GetProperty("Position")?.GetValue(_parent) as EsVector2<int> ?? new();
                 parentSize = new(windowSize.X, windowSize.Y);
                 parentPosition = new(windowPosition.X, windowPosition.Y);
+                parentIsWindow = true;
             }
             else
             {
@@ -408,15 +413,36 @@ namespace Espresso.EspInterface
                 (parentSize.X * _position.Scale.X) + _position.Offset.X,
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
+
+            if (HasModifier("EsSizeConstraint"))
+            {
+                EsSizeConstraint? sizeConstraint = null;
+
+                foreach (IEsModifier modifier in _modifiers)
+                {
+                    if (modifier.ModifierName == "EsSizeConstraint") sizeConstraint = (EsSizeConstraint)modifier; break;
+                }
+                
+                size = new(
+                    float.Clamp(size.X, sizeConstraint?.MinimumSize.X ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.X ?? Single.PositiveInfinity),
+                    float.Clamp(size.Y, sizeConstraint?.MinimumSize.Y ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.Y ?? Single.PositiveInfinity)
+                );
+            }
+
+            if (!parentIsWindow) position += parentPosition;
+            
             _absoluteSize = size;
-            _absolutePosition = parentPosition + position;
+            _absolutePosition = position;
             (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = EsRectangle.Calculate(size, position, _rotation);
-            EsDrawInfo drawInfo = new(_backgroundColor);
+            EsDrawInfo drawInfo = new();
+            EsShapeInfo shapeInfo = new() { Points = new(), Lines = new(), Fill = _backgroundColor };
 
-            foreach (EsVector2<float> point in calculated.points) drawInfo.Points.Add(new() { Position = new(point.X, point.Y) });
+            foreach (EsVector2<float> point in calculated.points) shapeInfo.Points.Add(new() { Position = new(point.X, point.Y) });
 
-            foreach ((int start, int end) line in calculated.lines) drawInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
+            foreach ((int start, int end) line in calculated.lines) shapeInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
 
+            drawInfo.Shapes.Add(shapeInfo);
+            
             return drawInfo;
         }
 
@@ -529,6 +555,7 @@ namespace Espresso.EspInterface
         {
             List<EsVector2<float>> points = new();
             List<(int start, int end)> lines = new() { (0, 1), (1, 2), (2, 0) };
+            EsVector2<float> center = new(size.X / 2, size.Y / 2);
             
             if (type == EsTriangleType.Acute)
             {
@@ -600,11 +627,13 @@ namespace Espresso.EspInterface
 
                 for (int i = 0; i < points.Count; i++)
                 {
-                    float x = points[i].X;
-                    float y = points[i].Y;
+                    float x = points[i].X - center.X;
+                    float y = points[i].Y - center.Y;
+                    float rotatedX = x * cos - y * sin;
+                    float rotatedY = x * sin + y * cos;
                     points[i] = new(
-                        x * cos - y * sin,
-                        x * sin + y * cos
+                        rotatedX + center.X,
+                        rotatedY + center.Y
                     );
                 }
             }
@@ -706,6 +735,7 @@ namespace Espresso.EspInterface
         {
             List<EsVector2<float>> points = new();
             List<(int start, int end)> lines = new() { (0, 1), (1, 2), (2, 3), (3, 0) };
+            EsVector2<float> center = new(size.X / 2, size.Y / 2);
             EsVector2<float> p1 = new();
             EsVector2<float> p2 = new(size.X, 0);
             EsVector2<float> p3 = new(size.X, size.Y);
@@ -724,11 +754,13 @@ namespace Espresso.EspInterface
 
                 for (int i = 0; i < points.Count; i++)
                 {
-                    float x = points[i].X;
-                    float y = points[i].Y;
+                    float x = points[i].X - center.X;
+                    float y = points[i].Y - center.Y;
+                    float rotatedX = x * cos - y * sin;
+                    float rotatedY = x * sin + y * cos;
                     points[i] = new(
-                        x * cos - y * sin,
-                        x * sin + y * cos
+                        rotatedX + center.X,
+                        rotatedY + center.Y
                     );
                 }
             }

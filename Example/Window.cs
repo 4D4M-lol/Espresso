@@ -1,4 +1,4 @@
-﻿using Espresso;
+﻿using Espresso; // Import Espresso namespace.
 
 namespace Example
 {
@@ -6,9 +6,9 @@ namespace Example
     {
         public static void Main(string[] args)
         {
-            EsWindow window = new();
+            EsWindow window = new("Example Window"); // Create a window and sets the title to "Example Window".
             
-            window.Run();
+            window.Run(); // Execute the main loop.
         }
     }
 }

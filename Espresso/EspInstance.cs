@@ -44,7 +44,7 @@ namespace Espresso.EspInstance
         public List<IEsModifier> GetModifiers();
         public void AddModifier(IEsModifier modifier);
         public void RemoveModifier(IEsModifier modifier);
-        public bool HasModifier(IEsModifier modifier);
+        public bool HasModifier(string modifier);
         public List<IEsInstance> GetChildren();
         public void AddChild(IEsInstance child);
         public void RemoveChild(IEsInstance child);
@@ -82,10 +82,19 @@ namespace Espresso.EspInstance
 
         public required int Start { get; init; }
         public required int End { get; init; }
-        public float Thickness { get; init; } = 5;
-        public float Opacity { get; init; } = 1;
         public EsLineType Type { get; init; } = EsLineType.Solid;
         public IEsColor Fill { get; init; } = EsColor3.Black;
+        public float Thickness { get; init; } = 5;
+        public float Opacity { get; init; } = 1;
+    }
+
+    public record EsShapeInfo
+    {
+        // Properties
+        
+        public required List<EsPointInfo> Points { get; init; }
+        public required List<EsLineInfo> Lines { get; init; }
+        public IEsColor Fill { get; init; } = EsColor3.White;
     }
     
     // Classes
@@ -94,23 +103,15 @@ namespace Espresso.EspInstance
     {
         // Properties and Fields
 
-        private IEsColor _fill;
-        private List<EsPointInfo> _points;
-        private List<EsLineInfo> _lines;
+        private List<EsShapeInfo> _shapes;
         
-        public IEsColor Fill { get => _fill; set => _fill = value; }
-        
-        public List<EsPointInfo> Points { get => _points; }
-        
-        public List<EsLineInfo> Lines { get => _lines; }
+        public List<EsShapeInfo> Shapes { get => _shapes; }
         
         // Constructors and Methods
 
-        public EsDrawInfo(IEsColor? fill = null, List<EsPointInfo>? points = null, List<EsLineInfo>? lines = null)
+        public EsDrawInfo(List<EsShapeInfo>? shapes = null)
         {
-            _fill = fill ?? EsColor3.White;
-            _points = points ?? new();
-            _lines = lines ?? new();
+            _shapes = shapes ?? new();
         }
     }
 }
