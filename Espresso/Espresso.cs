@@ -732,10 +732,6 @@ namespace Espresso
                             SDL.SetRenderDrawColor(_renderer, lineR, lineG, lineB, lineA);
                             
                             // TODO: Implement different line types (Dotted, Dashed, etc.) based on line.Type
-                            // For now, it's just a solid line.
-                            // This would typically involve custom drawing logic (e.g., drawing short segments, skipping pixels)
-                            // based on line.Thickness and line.Type. SDL_RenderDrawLine does not support thickness or patterns.
-                            // You might need a custom Bresenham's line algorithm or a series of SDL_RenderPoint calls.
                             
                             SDL.RenderLine(_renderer, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
                         }
