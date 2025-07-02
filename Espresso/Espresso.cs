@@ -70,7 +70,11 @@ namespace Espresso
         private IEsColor _fill;
         private float _opacity;
         private bool _running;
+        private bool _initialized;
+        private bool _shouldCenter;
+        private EsSignal<Action> _onStart;
         private EsSignal<Action<double>> _onRender;
+        private EsSignal<Action> _onEnd;
         private EsSignal<Action> _onWindowRestored;
         private EsSignal<Action> _onWindowMinimized;
         private EsSignal<Action> _onWindowMaximized;
@@ -95,6 +99,8 @@ namespace Espresso
             get => _state;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+                
                 _state = value;
 
                 if (SDL.IsMainThread())
@@ -128,6 +134,8 @@ namespace Espresso
             get => _icon;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
                 // TODO: Add icon setter.
             }
         }
@@ -139,6 +147,8 @@ namespace Espresso
             get => _name;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
                 _name = value;
 
                 if (SDL.IsMainThread())
@@ -160,6 +170,8 @@ namespace Espresso
             get => _size;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
                 _size = value;
 
                 if (SDL.IsMainThread())
@@ -181,6 +193,8 @@ namespace Espresso
             get => _position;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
                 _position = value;
 
                 if (SDL.IsMainThread())
@@ -202,6 +216,8 @@ namespace Espresso
             get => _border;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
                 _border = value;
 
                 if (SDL.IsMainThread())
@@ -228,13 +244,24 @@ namespace Espresso
             }
         }
 
-        public IEsColor Fill { get => _fill; set => _fill = value; }
+        public IEsColor Fill
+        {
+            get => _fill;
+            set
+            {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
+                _fill = value;
+            }
+        }
 
         public float Opacity
         {
             get => _opacity;
             set
             {
+                if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
                 _opacity = float.Clamp(value, 0, 1);
 
                 if (SDL.IsMainThread())
@@ -253,7 +280,11 @@ namespace Espresso
 
         public bool Running { get => _running; }
         
+        public EsSignal<Action> OnStart { get => _onStart; }
+        
         public EsSignal<Action<double>> OnRender { get => _onRender; }
+        
+        public EsSignal<Action> OnEnd { get => _onEnd; }
         
         public EsSignal<Action> OnWindowRestored { get => _onWindowRestored; }
         
@@ -284,11 +315,15 @@ namespace Espresso
             _closeOperation = EsCloseOperation.Close;
             _icon = new EsImage(new("assets/icons/EspressoIcon32x32.png"));
             _name = name ?? $"Espresso v{EsConfigs.Version}";
-            _size = size ?? new EsVector2<int>(800, 600);
-            _position = position ?? new EsVector2<int>();
+            _size = size ?? new(800, 600);
+            _position = position ?? new();
             _fill = new EsColor3(EsColors.White);
             _opacity = 1;
+            _initialized = false;
+            _shouldCenter = position == null;
+            _onStart = new();
             _onRender = new();
+            _onStart = new();
             _onWindowRestored = new();
             _onWindowMinimized = new();
             _onWindowMaximized = new();
@@ -299,6 +334,10 @@ namespace Espresso
             _onModifierRemoved = new();
             _onChildAdded = new();
             _onChildRemoved = new();
+        }
+
+        public void Initialize()
+        {
             Action<IntPtr> create = (IntPtr _) =>
             {
                 if (!SDL.Init(SDL.InitFlags.Video))
@@ -313,9 +352,9 @@ namespace Espresso
 
                 SDL.SetWindowIcon(_window, Image.Load(_icon.Path.AbsolutePath));
 
-                if (position != null)
+                if (!_shouldCenter)
                 {
-                    SDL.SetWindowPosition(_window, position.X, position.Y);
+                    SDL.SetWindowPosition(_window, _position.X, _position.Y);
                 }
                 else
                 {
@@ -400,10 +439,16 @@ namespace Espresso
             };
             
             if (SDL.IsMainThread()) { create(IntPtr.Zero); } else { SDL.RunOnMainThread((IntPtr _) => { create(IntPtr.Zero); }, IntPtr.Zero, false); }
+
+            _initialized = true;
+
+            _onStart.Emit();
         }
 
         public void Center()
         {
+            if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
+
             if (SDL.IsMainThread())
             {
                 SDL.SetWindowPosition(_window, (int)SDL.WindowPosCentered(), (int)SDL.WindowPosCentered());
@@ -425,6 +470,8 @@ namespace Espresso
 
         public void Run()
         {
+            if (!_initialized) throw new ApplicationException("Window must be initialized first before being ran.");
+
             _running = true;
 
             SDL.RunOnMainThread((IntPtr _) =>
@@ -439,7 +486,12 @@ namespace Espresso
 
         public void Stop()
         {
+            if (!_initialized) throw new ApplicationException("Window must be initialized first before being stopped.");
+
             _running = false;
+            _initialized = true;
+
+            _onEnd.Emit();
         }
         
         public IEsInstance? Clone()
@@ -449,7 +501,12 @@ namespace Espresso
 
         public void Destroy()
         {
+            if (!_initialized) throw new ApplicationException("Window must be initialized first before being destroyed.");
+
             _running = false;
+            _initialized = true;
+
+            _onEnd.Emit();
         }
 
         public List<IEsInstance> ChildrenSelector(string selector)
@@ -633,6 +690,8 @@ namespace Espresso
 
         public EsDrawInfo? Render()
         {
+            if (!_initialized) throw new ApplicationException("Window must be initialized first before being rendered.");
+
             _stopwatch.Start();
             
             _surface.W = _size.X;
