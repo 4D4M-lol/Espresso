@@ -397,7 +397,7 @@ namespace Espresso.EspInterface
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
 
-            if (HasModifier("EsSizeConstraint"))
+            if (_modifierNames.Contains("EsSizeConstraint"))
             {
                 EsSizeConstraint? sizeConstraint = null;
 
@@ -432,6 +432,423 @@ namespace Espresso.EspInterface
         public override string ToString()
         {
             return $"<EsFrame Name=\"{_name}\">";
+        }
+    }
+
+    public class EsCanvas : IEsInterface
+    {
+        // Properties and Fields
+
+        private EsRectangle _rectangle;
+        private IEsInstance? _parent;
+        private List<string> _modifierNames;
+        private List<IEsModifier> _modifiers;
+        private List<IEsInstance> _children;
+        private List<EsDrawInfo> _drawings;
+        private List<string> _tags;
+        private string _name;
+        private bool _active;
+        private bool _visible;
+        private EsAutomaticSize _autoSize;
+        private EsVector2<float> _absoluteSize;
+        private EsVector2<float> _absolutePosition;
+        private EsLayoutVector<float, int> _size;
+        private EsLayoutVector<float, int> _position;
+        private float _rotation;
+        private float _opacity;
+        private IEsColor _backgroundColor;
+        private bool _clip;
+        private EsSignal<Action<IEsModifier>> _onModifierAdded;
+        private EsSignal<Action<IEsModifier>> _onModifierRemoved;
+        private EsSignal<Action<IEsInstance>> _onChildAdded;
+        private EsSignal<Action<IEsInstance>> _onChildRemoved;
+
+        public IEsInstance? Parent
+        {
+            get => _parent;
+            set
+            {
+                if (_parent == value) return;
+        
+                _parent?.RemoveChild(this);
+        
+                _parent = value;
+        
+                if (_parent != null) _parent.AddChild(this);
+            }
+        }
+        
+        public string InstanceName { get => "EsFrame"; }
+        
+        public string Name { get => _name; set => _name = value; }
+        
+        public bool Active { get => _active; set => _active = value; }
+        
+        public bool Visible { get => _visible; set => _visible = value; }
+        
+        public EsAutomaticSize AutoSize { get => _autoSize; set => _autoSize = value; }
+        
+        public EsVector2<float> AbsoluteSize { get => _absoluteSize; }
+        
+        public EsVector2<float> AbsolutePosition { get => _absolutePosition; }
+        
+        public EsLayoutVector<float, int> Size { get => _size; set => _size = value; }
+        
+        public EsLayoutVector<float, int> Position { get => _position; set => _position = value; }
+        
+        public float Rotation { get => _rotation; set => _rotation = float.Clamp(value, -360, 360); }
+        
+        public float Opacity { get => _opacity; set => _opacity = value; }
+        
+        public IEsColor BackgroundColor { get => _backgroundColor; set => _backgroundColor = value; }
+        
+        public bool Clip { get => _clip; set => _clip = value; }
+        
+        public EsSignal<Action<IEsModifier>> OnModifierAdded { get => _onModifierAdded; }
+        
+        public EsSignal<Action<IEsModifier>> OnModifierRemoved { get => _onModifierRemoved; }
+        
+        public EsSignal<Action<IEsInstance>> OnChildAdded { get => _onChildAdded; set => _onChildAdded = value; }
+        
+        public EsSignal<Action<IEsInstance>> OnChildRemoved { get => _onChildRemoved; set => _onChildRemoved = value; }
+        
+        // Constructors and Methods
+
+        public EsCanvas(IEsInstance? parent = null, string name = "EsCanvas")
+        {
+            _rectangle = new EsRectangle(new(200, 200));
+            _parent = parent;
+            _modifierNames = new();
+            _modifiers = new();
+            _children = new();
+            _tags = new();
+            _name = name;
+            _active = true;
+            _visible = true;
+            _autoSize = EsAutomaticSize.None;
+            _size = new(200, 200);
+            _position = new();
+            _rotation = 0;
+            _opacity = 1;
+            _backgroundColor = new EsColor3(255, 255, 255);
+            _clip = false;
+            _onModifierAdded = new();
+            _onModifierRemoved = new();
+            _onChildAdded = new();
+            _onChildRemoved = new();
+
+            if (parent != null)
+            {
+                _parent.AddChild(this);
+            }
+        }
+
+        public IEsInstance? Clone()
+        {
+            string serialized = JsonSerializer.Serialize(this);
+            
+            return JsonSerializer.Deserialize<EsFrame>(serialized);
+        }
+
+        public void Destroy()
+        {
+            // TODO: Add destroy method to EsCanvas.
+        }
+
+        public List<IEsInstance> ChildrenSelector(string selector)
+        {
+            if (
+                !selector.StartsWith("#") &&
+                !(selector.StartsWith('\'') && selector.EndsWith('\'')) &&
+                !(selector.StartsWith('\"') && selector.EndsWith('\"')) &&
+                !(selector.StartsWith('<') && selector.EndsWith('>'))
+            )
+            {
+                throw new ArgumentException($"Invalid selector: \"{selector}\".");
+            }
+
+            if (selector.StartsWith('#'))
+            {
+                string tag = selector.Substring(1);
+                
+                return new(_children.Where(child => child.HasTag(tag)));
+            }
+
+            string name = selector[1..^1];
+
+            if (selector.StartsWith('\'') || selector.StartsWith('\"'))
+            {
+                return new(_children.Where(child => child.Name == name));
+            }
+                
+            return new(_children.Where(child => child.InstanceName == name));
+        }
+
+        public List<IEsInstance> DescendantsSelector(string selector)
+        {
+            if (
+                !selector.StartsWith("#") &&
+                !(selector.StartsWith('\'') && selector.EndsWith('\'')) &&
+                !(selector.StartsWith('\"') && selector.EndsWith('\"')) &&
+                !(selector.StartsWith('<') && selector.EndsWith('>'))
+            )
+            {
+                throw new ArgumentException($"Invalid selector: \"{selector}\".");
+            }
+            
+            List<IEsInstance> descendants = GetDescendants();
+
+            if (selector.StartsWith('#'))
+            {
+                string tag = selector.Substring(1);
+                
+                return new(descendants.Where(descendant => descendant.HasTag(tag)));
+            }
+
+            string name = selector[1..^1];
+
+            if (selector.StartsWith('\'') || selector.StartsWith('\"'))
+            {
+                return new(descendants.Where(descendant => descendant.Name == name));
+            }
+            
+            return new(descendants.Where(descendant => descendant.InstanceName == name));
+        }
+
+        public List<IEsModifier> GetModifiers()
+        {
+            return new(_modifiers);
+        }
+        
+        public void AddModifier(IEsModifier modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
+
+            if (_modifierNames.Contains(modifier.ModifierName))
+            {
+                if (EsConfigs.Log) Console.WriteLine($"Can not add {modifier.ModifierName} to {this}, {this} already has {modifier.ModifierName}.");
+            }
+
+            modifier.Parent = this;
+            
+            _modifierNames.Add(modifier.ModifierName);
+            _modifiers.Add(modifier);
+            _onModifierAdded.Emit(modifier);
+        }
+
+        public void RemoveModifier(string modifier)
+        {
+            if (modifier == null) throw new ArgumentNullException(nameof(modifier));
+            
+            if (!_modifierNames.Contains(modifier)) return;
+
+            IEsModifier mod = _modifiers[_modifierNames.IndexOf(modifier)];
+
+            if (mod.Parent == this) mod.Parent = null;
+            
+            _modifierNames.Remove(modifier);
+            _modifiers.Remove(mod);
+            _onModifierRemoved.Emit(mod);
+        }
+
+        public bool HasModifier(string modifier)
+        {
+            return _modifierNames.Contains(modifier);
+        }
+
+        public List<IEsInstance> GetChildren()
+        {
+            return new(_children);
+        }
+        
+        public void AddChild(IEsInstance child)
+        {
+            if (child == null) throw new ArgumentNullException(nameof(child));
+            
+            if (child == this) throw new ArgumentException("Cannot add self as child.");
+
+            if (_children.Contains(child)) return;
+
+            child.Parent = this;
+            
+            _children.Add(child);
+            _onChildAdded.Emit(child);
+        }
+
+        public void RemoveChild(IEsInstance child)
+        {
+            if (child == null) throw new ArgumentNullException(nameof(child));
+            
+            if (child == this) throw new ArgumentException("Cannot remove self as child.");
+            
+            if (!_children.Contains(child)) return;
+
+            if (child.Parent == this) child.Parent = null;
+            
+            _children.Remove(child);
+            _onChildRemoved.Emit(child);
+        }
+
+        public bool HasChild(IEsInstance child)
+        {
+            return _children.Contains(child);
+        }
+
+        public List<IEsInstance> GetDescendants()
+        {
+            List<IEsInstance> descendants = new(_children);
+
+            foreach (IEsInstance child in _children)
+            {
+                foreach (IEsInstance descendant in child.GetDescendants())
+                {
+                    descendants.Add(descendant);
+                }
+            }
+            
+            return descendants;
+        }
+
+        public List<EsDrawInfo> GetDrawings()
+        {
+            return new(_drawings);
+        }
+
+        public EsDrawInfo Draw(EsDrawInfo drawing)
+        {
+            _drawings.Add(drawing);
+            
+            return drawing;
+        }
+
+        public EsDrawInfo Draw(IEsDrawing drawing)
+        {
+            EsDrawInfo drawInfo = new();
+            List<EsPointInfo> points = new();
+            List<EsLineInfo> lines = new();
+
+            foreach (EsVector2<float> point in drawing.GetPoints()) points.Add(new() { Position = new(point.X, point.Y, 0) });
+
+            foreach ((int start, int end) line in drawing.GetLines()) lines.Add(new() { Start = line.start, End = line.end });
+            
+            drawInfo.Shapes.Add(new()
+            {
+                Points = points,
+                Lines = lines,
+                Fill = drawing.Fill,
+            });
+            
+            _drawings.Add(drawInfo);
+            
+            return drawInfo;
+        }
+
+        public void Erase(EsDrawInfo drawing)
+        {
+            if (!_drawings.Contains(drawing)) return;
+            
+            _drawings.RemoveAll(draw => draw == drawing);
+        }
+
+        public void Clear()
+        {
+            _drawings.Clear();
+        }
+
+        public bool HasDrawings(EsDrawInfo drawing)
+        {
+            return _drawings.Contains(drawing);
+        }
+
+        public List<string> GetTags()
+        {
+            return new(_tags);
+        }
+
+        public void AddTag(string tag)
+        {
+            if (_tags.Contains(tag)) return;
+            
+            _tags.Add(tag);
+        }
+
+        public void RemoveTag(string tag)
+        {
+            _tags.Remove(tag);
+        }
+
+        public bool HasTag(string tag)
+        {
+            return _tags.Contains(tag);
+        }
+
+        public EsDrawInfo? Render()
+        {
+            if (_parent == null || (_parent.GetType() != typeof(EsWindow) && !typeof(IEsInterface).IsAssignableFrom(_parent.GetType()))) return null;
+
+            Type parentType = _parent.GetType();
+            EsVector2<float> parentSize;
+            EsVector2<float> parentPosition;
+            bool parentIsWindow = false;
+
+            if (_parent.GetType() == typeof(EsWindow))
+            {
+                EsVector2<int> windowSize = parentType.GetProperty("Size")?.GetValue(_parent) as EsVector2<int> ?? new();
+                EsVector2<int> windowPosition = parentType.GetProperty("Position")?.GetValue(_parent) as EsVector2<int> ?? new();
+                parentSize = new(windowSize.X, windowSize.Y);
+                parentPosition = new(windowPosition.X, windowPosition.Y);
+                parentIsWindow = true;
+            }
+            else
+            {
+                parentSize = parentType.GetProperty("AbsoluteSize")?.GetValue(_parent) as EsVector2<float> ?? new();
+                parentPosition = parentType.GetProperty("AbsolutePosition")?.GetValue(_parent) as EsVector2<float> ?? new();
+            }
+
+            EsVector2<float> size = new(
+                (parentSize.X * _size.Scale.X) + _size.Offset.X,
+                (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
+            );
+            EsVector2<float> position = new(
+                (parentSize.X * _position.Scale.X) + _position.Offset.X,
+                (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
+            );
+
+            if (_modifierNames.Contains("EsSizeConstraint"))
+            {
+                EsSizeConstraint? sizeConstraint = null;
+
+                foreach (IEsModifier modifier in _modifiers)
+                {
+                    if (modifier.ModifierName == "EsSizeConstraint") sizeConstraint = (EsSizeConstraint)modifier; break;
+                }
+                
+                size = new(
+                    float.Clamp(size.X, sizeConstraint?.MinimumSize.X ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.X ?? Single.PositiveInfinity),
+                    float.Clamp(size.Y, sizeConstraint?.MinimumSize.Y ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.Y ?? Single.PositiveInfinity)
+                );
+            }
+
+            if (!parentIsWindow) position += parentPosition;
+            
+            _absoluteSize = size;
+            _absolutePosition = position;
+            (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = EsRectangle.Calculate(size, position, _rotation);
+            EsDrawInfo drawInfo = new();
+            EsShapeInfo shapeInfo = new() { Points = new(), Lines = new(), Fill = _backgroundColor };
+
+            foreach (EsVector2<float> point in calculated.points) shapeInfo.Points.Add(new() { Position = new(point.X, point.Y) });
+
+            foreach ((int start, int end) line in calculated.lines) shapeInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
+
+            drawInfo.Shapes.Add(shapeInfo);
+            
+            return drawInfo;
+        }
+
+        public override string ToString()
+        {
+            return $"<EsCanvas Name=\"{_name}\">";
         }
     }
 

@@ -721,6 +721,8 @@ namespace Espresso
 
             foreach (IEsInstance descendant in GetDescendants())
             {
+                if (descendant is IEsInterface gui && !gui.Visible) continue;
+                
                 EsDrawInfo? drawInfo = descendant.Render();
                 
                 if (drawInfo == null) continue;
