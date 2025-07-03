@@ -76,6 +76,7 @@ namespace Espresso.EspInterface
 
         private EsRectangle _rectangle;
         private IEsInstance? _parent;
+        private List<string> _modifierNames;
         private List<IEsModifier> _modifiers;
         private List<IEsInstance> _children;
         private List<string> _tags;
@@ -107,30 +108,7 @@ namespace Espresso.EspInterface
         
                 _parent = value;
         
-                if (_parent != null)
-                {
-                    bool isAncestor = false;
-                    IEsInstance? current = _parent;
-
-                    while (current != null)
-                    {
-                        if (current == _parent)
-                        {
-                            isAncestor = true;
-                            
-                            break;
-                        }
-                        
-                        current = current.Parent;
-                    }
-                    
-                    if (isAncestor)
-                    {
-                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
-                    }
-            
-                    _parent.AddChild(this);
-                }
+                if (_parent != null) _parent.AddChild(this);
             }
         }
         
@@ -174,6 +152,7 @@ namespace Espresso.EspInterface
         {
             _rectangle = new EsRectangle(new(200, 200));
             _parent = parent;
+            _modifierNames = new();
             _modifiers = new();
             _children = new();
             _tags = new();
@@ -279,13 +258,14 @@ namespace Espresso.EspInterface
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
 
-            if (_modifiers.Contains(modifier))
+            if (_modifierNames.Contains(modifier.ModifierName))
             {
                 if (EsConfigs.Log) Console.WriteLine($"Can not add {modifier.ModifierName} to {this}, {this} already has {modifier.ModifierName}.");
             }
 
             modifier.Parent = this;
             
+            _modifierNames.Add(modifier.ModifierName);
             _modifiers.Add(modifier);
             _onModifierAdded.Emit(modifier);
         }
@@ -294,24 +274,20 @@ namespace Espresso.EspInterface
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            if (!HasModifier(modifier)) return;
+            if (!_modifierNames.Contains(modifier)) return;
 
-            IEsModifier? mod = null;
-
-            foreach (IEsModifier mod2 in _modifiers)
-            {
-                if (mod2.ModifierName == modifier) mod = mod2; break;
-            }
+            IEsModifier mod = _modifiers[_modifierNames.IndexOf(modifier)];
 
             if (mod.Parent == this) mod.Parent = null;
             
+            _modifierNames.Remove(modifier);
             _modifiers.Remove(mod);
             _onModifierRemoved.Emit(mod);
         }
 
         public bool HasModifier(string modifier)
         {
-            return _modifiers.Select(m => m.ModifierName).Contains(modifier);
+            return _modifierNames.Contains(modifier);
         }
 
         public List<IEsInstance> GetChildren()

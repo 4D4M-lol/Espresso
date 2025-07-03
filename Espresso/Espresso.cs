@@ -57,6 +57,7 @@ namespace Espresso
         private SDL.FRect _surface;
         private SDL.EventFilter _eventFilter;
         private Stopwatch _stopwatch;
+        private List<string> _modifierNames;
         private List<IEsModifier> _modifiers;
         private List<IEsInstance> _children;
         private List<string> _tags;
@@ -172,7 +173,14 @@ namespace Espresso
             {
                 if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
 
-                _size = value;
+                if (_modifierNames.Contains("EsSizeConstraint"))
+                {
+                    EsSizeConstraint sizeConstraint = _modifiers[_modifierNames.IndexOf("EsSizeConstraint")] as EsSizeConstraint;
+                    EsVector2<float> minSize = sizeConstraint?.MinimumSize ?? new(int.MinValue, int.MinValue);
+                    EsVector2<float> maxSize = sizeConstraint?.MaximumSize ?? new(int.MaxValue, int.MaxValue);
+                    _size = new(int.Clamp(value.X, (int)minSize.X, (int)maxSize.X), int.Clamp(value.Y, (int)minSize.Y, (int)maxSize.Y));
+                }
+                else _size = value;
 
                 if (SDL.IsMainThread())
                 {
@@ -309,6 +317,7 @@ namespace Espresso
         public EsWindow(string? name = null, EsVector2<int>? size = null, EsVector2<int>? position = null)
         {
             _stopwatch = new();
+            _modifierNames = new();
             _modifiers = new();
             _children = new();
             _tags = new();
@@ -323,7 +332,7 @@ namespace Espresso
             _shouldCenter = position == null;
             _onStart = new();
             _onRender = new();
-            _onStart = new();
+            _onEnd = new();
             _onWindowRestored = new();
             _onWindowMinimized = new();
             _onWindowMaximized = new();
@@ -578,13 +587,14 @@ namespace Espresso
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
 
-            if (_modifiers.Contains(modifier))
+            if (_modifierNames.Contains(modifier.ModifierName))
             {
                 if (EsConfigs.Log) Console.WriteLine($"Can not add {modifier.ModifierName} to {this}, {this} already has {modifier.ModifierName}.");
             }
 
             modifier.Parent = this;
             
+            _modifierNames.Add(modifier.ModifierName);
             _modifiers.Add(modifier);
             _onModifierAdded.Emit(modifier);
         }
@@ -593,24 +603,20 @@ namespace Espresso
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));
             
-            if (!HasModifier(modifier)) return;
+            if (!_modifierNames.Contains(modifier)) return;
 
-            IEsModifier? modi = null;
+            IEsModifier? mod = _modifiers[_modifierNames.IndexOf(modifier)];
 
-            foreach (IEsModifier mod in _modifiers)
-            {
-                if (mod.ModifierName == modifier) modi = mod; break;
-            }
+            if (mod.Parent == this) mod.Parent = null;
 
-            if (modi.Parent == this) modi.Parent = null;
-            
-            _modifiers.Remove(modi);
-            _onModifierRemoved.Emit(modi);
+            _modifierNames.Remove(modifier);
+            _modifiers.Remove(mod);
+            _onModifierRemoved.Emit(mod);
         }
 
         public bool HasModifier(string modifier)
         {
-            return _modifiers.Select(m => m.ModifierName).Contains(modifier);
+            return _modifierNames.Contains(modifier);
         }
 
         public List<IEsInstance> GetChildren()

@@ -1,7 +1,6 @@
 ﻿// Imports
 
 using Espresso.EspInstance;
-using Espresso.EspInterface;
 using Espresso.EspMath;
 
 // Styling Namespace
@@ -647,37 +646,14 @@ namespace Espresso.EspStyling
             
                 _parent = value;
             
-                if (_parent != null)
-                {
-                    bool isAncestor = false;
-                    IEsInstance? current = _parent;
-            
-                    while (current != null)
-                    {
-                        if (current == _parent)
-                        {
-                            isAncestor = true;
-                            
-                            break;
-                        }
-                        
-                        current = current.Parent;
-                    }
-                    
-                    if (isAncestor)
-                    {
-                        throw new InvalidOperationException("Setting this parent would create a circular reference.");
-                    }
-            
-                    _parent.AddModifier(this);
-                }
+                if (_parent != null) _parent.AddModifier(this);
             }
         }
 
         public string ModifierName { get; } = "EsSizeConstraint";
-        
+
         public EsVector2<float> MinimumSize { get => _minimumSize; set => _minimumSize = value; }
-        
+
         public EsVector2<float> MaximumSize { get => _maximumSize; set => _maximumSize = value; }
 
         public bool Active { get => _active; set => _active = value; }
