@@ -390,12 +390,15 @@ namespace Espresso.EspStyling
         
         private uint _hex;
         private (byte r, byte g, byte b) _rgb;
+        private (ushort h, byte s, byte l) _hsl;
 
         public bool HasAlpha { get; } = false;
 
         public uint Hex { get => _hex; }
 
         public (byte Red, byte Green, byte Blue) Rgb { get => _rgb; }
+
+        public (ushort Hue, byte Saturation, byte Lightness) Hsl { get => _hsl; }
         
         // Constructors and Methods
 
@@ -403,30 +406,164 @@ namespace Espresso.EspStyling
         {
             _hex = 0;
             _rgb = (0, 0, 0);
+            _hsl = (0, 0, 0);
         }
 
         public EsColor3(EsColors color)
         {
             _hex = (uint)color;
             _rgb = ((byte)((_hex >> 16) & 0xFF), (byte)((_hex >> 8) & 0xFF), (byte)(_hex & 0xFF));
+            double r = (double)_rgb.r / 255;
+            double b = (double)_rgb.g / 255;
+            double g = (double)_rgb.b / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _hsl = (
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
         }
 
         public EsColor3(EsColorShades shade)
         {
             _hex = (uint)shade;
             _rgb = ((byte)((_hex >> 16) & 0xFF), (byte)((_hex >> 8) & 0xFF), (byte)(_hex & 0xFF));
+            double r = (double)_rgb.r / 255;
+            double b = (double)_rgb.g / 255;
+            double g = (double)_rgb.b / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _hsl = (
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
         }
 
         public EsColor3(uint hex)
         {
             _hex = uint.Clamp(hex, 0, 0xFFFFFF);
             _rgb = ((byte)((hex >> 16) & 0xFF), (byte)((hex >> 8) & 0xFF), (byte)(hex & 0xFF));
+            double r = (double)_rgb.r / 255;
+            double b = (double)_rgb.g / 255;
+            double g = (double)_rgb.b / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _hsl = (
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
         }
 
         public EsColor3(byte red, byte green, byte blue)
         {
             _hex = (uint)((red << 16) | (green << 8) | blue);
             _rgb = (red, green, blue);
+            double r = (double)red / 255;
+            double b = (double)green / 255;
+            double g = (double)blue / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _hsl = (
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
+        }
+
+        public EsColor3(ushort hue, byte saturation, byte lightness)
+        {
+            hue = ushort.Clamp(hue, 0, 360);
+            saturation = byte.Clamp(saturation, 0, 100);
+            lightness = byte.Clamp(lightness, 0, 100);
+            double s = saturation / 100.0;
+            double l = lightness / 100.0;
+            double c = (1 - Math.Abs(2 * l - 1)) * s;
+            double x = c * (1 - Math.Abs((hue / 60.0) % 2 - 1));
+            double m = l - c / 2;
+            double r, g, b;
+    
+            if (hue < 60) { r = c; g = x; b = 0; }
+            else if (hue < 120) { r = x; g = c; b = 0; }
+            else if (hue < 180) { r = 0; g = c; b = x; }
+            else if (hue < 240) { r = 0; g = x; b = c; }
+            else if (hue < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+    
+            (byte red, byte green, byte blue) = (
+                (byte)Math.Round((r + m) * 255),
+                (byte)Math.Round((g + m) * 255),
+                (byte)Math.Round((b + m) * 255)
+            );
+            _hex = (uint)((red << 16) | (green << 8) | blue);
+            _rgb = (red, green, blue);
+            _hsl = (hue, saturation, lightness);
         }
 
         public void Grayscale(EsGrayscaleMethod method = EsGrayscaleMethod.Luminance)
@@ -509,13 +646,16 @@ namespace Espresso.EspStyling
         // Properties and Fields
         
         private uint _hex;
-        private (byte a,byte r, byte g, byte b) _argb;
+        private (byte a, byte r, byte g, byte b) _argb;
+        private (byte a, ushort h, byte s, byte l) _ahsl;
 
         public bool HasAlpha { get; } = true;
 
         public uint Hex { get => _hex; }
 
         public (byte Alpha, byte Red, byte Green, byte Blue) Argb { get => _argb; }
+
+        public (byte Alpha, ushort Hue, byte Saturation, byte Lightness) Ahsl { get => _ahsl; }
         
         // Constructors and Methods
 
@@ -523,30 +663,174 @@ namespace Espresso.EspStyling
         {
             _hex = 0;
             _argb = (0, 0, 0, 0);
+            _ahsl = (0, 0, 0, 0);
         }
 
         public EsColor4(EsColors color)
         {
             _hex = (uint)color;
             _argb = ((byte)((_hex >> 24) & 0xFF), (byte)((_hex >> 16) & 0xFF), (byte)((_hex >> 8) & 0xFF), (byte)(_hex & 0xFF));
+            byte a = (byte)(((double)_argb.a / 255) * 100);
+            double r = (double)_argb.r / 255;
+            double b = (double)_argb.g / 255;
+            double g = (double)_argb.b / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _ahsl = (
+                a,
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
         }
 
         public EsColor4(EsColorShades shade)
         {
             _hex = (uint)shade;
             _argb = ((byte)((_hex >> 24) & 0xFF), (byte)((_hex >> 16) & 0xFF), (byte)((_hex >> 8) & 0xFF), (byte)(_hex & 0xFF));
+            byte a = (byte)(((double)_argb.a / 255) * 100);
+            double r = (double)_argb.r / 255;
+            double b = (double)_argb.g / 255;
+            double g = (double)_argb.b / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _ahsl = (
+                a,
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
         }
 
         public EsColor4(uint hex)
         {
             _hex = uint.Clamp(hex, 0, 0xFFFFFF);
             _argb = ((byte)((hex >> 24) & 0xFF), (byte)((hex >> 16) & 0xFF), (byte)((hex >> 8) & 0xFF), (byte)(hex & 0xFF));
+            byte a = (byte)(((double)_argb.a / 255) * 100);
+            double r = (double)_argb.r / 255;
+            double b = (double)_argb.g / 255;
+            double g = (double)_argb.b / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _ahsl = (
+                a,
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
         }
 
         public EsColor4(byte alpha, byte red, byte green, byte blue)
         {
             _hex = (uint)((alpha << 24) | (red << 16) | (green << 8) | blue);
             _argb = (alpha, red, green, blue);
+            byte a = (byte)(((double)alpha / 255) * 100);
+            double r = (double)red / 255;
+            double b = (double)green / 255;
+            double g = (double)blue / 255;
+            double min = Math.Min(r, Math.Min(b, g));
+            double max = Math.Max(r, Math.Max(b, g));
+            double delta = max - min;
+            (double hue, double saturation, double lightness) = (0d, 0d, (max + min) / 2);
+            
+            if (delta > 0)
+            {
+                saturation = lightness < 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (Math.Abs(max - r) < double.Epsilon) hue = (g - b) / delta;
+                else if (Math.Abs(max - g) < double.Epsilon)hue = 2.0 + (b - r) / delta;
+                else hue = 4.0 + (r - g) / delta;
+
+                hue *= 60;
+                
+                if (hue < 0) hue += 360;
+            }
+            
+            _ahsl = (
+                a,
+                (ushort)Math.Round(360 - hue),
+                (byte)Math.Round(saturation * 100),
+                (byte)Math.Round(lightness * 100)
+            );
+        }
+
+        public EsColor4(byte alpha, ushort hue, byte saturation, byte lightness)
+        {
+            alpha = byte.Clamp(alpha, 0, 100);
+            hue = ushort.Clamp(hue, 0, 360);
+            saturation = byte.Clamp(saturation, 0, 100);
+            lightness = byte.Clamp(lightness, 0, 100);
+            double s = saturation / 100.0;
+            double l = lightness / 100.0;
+            double c = (1 - Math.Abs(2 * l - 1)) * s;
+            double x = c * (1 - Math.Abs((hue / 60.0) % 2 - 1));
+            double m = l - c / 2;
+            double r, g, b;
+    
+            if (hue < 60) { r = c; g = x; b = 0; }
+            else if (hue < 120) { r = x; g = c; b = 0; }
+            else if (hue < 180) { r = 0; g = c; b = x; }
+            else if (hue < 240) { r = 0; g = x; b = c; }
+            else if (hue < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+    
+            (byte alp, byte red, byte green, byte blue) = (
+                (byte)Math.Round((alpha / 100d) * 255d),
+                (byte)Math.Round((r + m) * 255),
+                (byte)Math.Round((g + m) * 255),
+                (byte)Math.Round((b + m) * 255)
+            );
+            _hex = (uint)((alp << 24) | (red << 16) | (green << 8) | blue);
+            _argb = (alp, red, green, blue);
+            _ahsl = (alpha, hue, saturation, lightness);
         }
 
         public void Grayscale(EsGrayscaleMethod method = EsGrayscaleMethod.Average)
