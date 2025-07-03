@@ -595,17 +595,17 @@ namespace Espresso
             
             if (!HasModifier(modifier)) return;
 
-            IEsModifier? mod = null;
+            IEsModifier? modi = null;
 
-            foreach (IEsModifier mod2 in _modifiers)
+            foreach (IEsModifier mod in _modifiers)
             {
-                if (mod2.ModifierName == modifier) mod = mod2; break;
+                if (mod.ModifierName == modifier) modi = mod; break;
             }
 
-            if (mod.Parent == this) mod.Parent = null;
+            if (modi.Parent == this) modi.Parent = null;
             
-            _modifiers.Remove(mod);
-            _onModifierRemoved.Emit(mod);
+            _modifiers.Remove(modi);
+            _onModifierRemoved.Emit(modi);
         }
 
         public bool HasModifier(string modifier)
