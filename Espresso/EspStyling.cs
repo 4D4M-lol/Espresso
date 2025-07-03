@@ -485,7 +485,7 @@ namespace Espresso.EspStyling
 
         public override string ToString()
         {
-            return $"(EsColor3 Hex=0x{_hex:x8} Rgb=({String.Join(", ", _rgb)}))";
+            return $"(EsColor3 Hex=0x{_hex:x8} Rgb=({String.Join(", ", _rgb)})";
         }
     }
 
@@ -619,7 +619,7 @@ namespace Espresso.EspStyling
 
         public override string ToString()
         {
-            return $"(EsColor3 Hex=0x{_hex:x8} Argb=({String.Join(", ", _argb)}))";
+            return $"(EsColor3 Hex=0x{_hex:x8} Argb=({String.Join(", ", _argb)})";
         }
     }
 
