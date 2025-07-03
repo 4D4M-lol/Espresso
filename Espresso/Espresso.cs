@@ -141,7 +141,7 @@ namespace Espresso
             }
         }
 
-        public string InstanceName { get; } = "EsWindow";
+        public string InstanceName { get => "EsWindow"; }
 
         public string Name
         {
@@ -285,6 +285,8 @@ namespace Espresso
                 }
             }
         }
+        
+        public ulong Ticks { get => SDL.GetTicks(); }
 
         public bool Running { get => _running; }
         

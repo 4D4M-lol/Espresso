@@ -4,7 +4,7 @@ namespace Example
 {
     public static class Window
     {
-        public static void Main(string[] args)
+        public static void Create()
         {
             EsWindow window = new("Example Window"); // Create a window and sets the title to "Example Window".
             
