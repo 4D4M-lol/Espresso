@@ -13,6 +13,7 @@
                 {
                     case "window": Window.Create(); break;
                     case "rainbow": Rainbow.Create(); break;
+                    case "drawing": Drawing.Create(); break;
                     default: Window.Create(); break;
                 }
             }

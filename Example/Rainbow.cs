@@ -10,7 +10,7 @@ namespace Example
         
         public static void Create()
         {
-            window = new("Rainbow Window"); // Create a window and sets the title to "Rainbow Window".
+            window = new("Rainbow Window"); // Create a window and set the title to "Rainbow Window".
             
             window.Initialize(); // Initialize window.
 
@@ -28,7 +28,7 @@ namespace Example
             byte red = (byte)(128 + 127 * Math.Sin(now)); // Calculate red.
             byte green = (byte)(128 + 127 * Math.Sin(now + Double.Pi * 2 / 3)); // Calculate green.
             byte blue = (byte)(128 + 127 * Math.Sin(now + Double.Pi * 4 / 3)); // Calculate blue.
-            window.Fill = new EsColor3(red, green, blue); // Changed the window background color.
+            window.Fill = new EsColor3(red, green, blue); // Change the window background color.
         }
     }
 }

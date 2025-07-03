@@ -6,7 +6,7 @@ namespace Example
     {
         public static void Create()
         {
-            EsWindow window = new("Example Window"); // Create a window and sets the title to "Example Window".
+            EsWindow window = new("Example Window"); // Create a window and set the title to "Example Window".
             
             window.Initialize(); // Initialize window.
             window.Run(); // Execute the main loop.
