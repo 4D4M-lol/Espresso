@@ -521,6 +521,7 @@ namespace Espresso.EspInterface
             _modifierNames = new();
             _modifiers = new();
             _children = new();
+            _drawings = new();
             _tags = new();
             _name = name;
             _active = true;
@@ -842,6 +843,27 @@ namespace Espresso.EspInterface
             foreach ((int start, int end) line in calculated.lines) shapeInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
 
             drawInfo.Shapes.Add(shapeInfo);
+
+            int index = 0;
+
+            foreach (EsDrawInfo drawing in _drawings)
+            {
+                foreach (EsShapeInfo shape in drawing.Shapes)
+                {
+                    List<EsPointInfo> points = new();
+                    List<EsLineInfo> lines = new();
+
+                    foreach (EsPointInfo point in shape.Points) points.Add(new() { Position = new(point.Position.X + position.X, point.Position.Y + position.Y, 0), });
+
+                    foreach (EsLineInfo line in shape.Lines) lines.Add(new() { Start = line.Start + index + 4, End = line.End + index + 4 });
+
+                    EsShapeInfo newShape = new() { Points = points, Lines = lines, Fill = shape.Fill };
+                    
+                    drawInfo.Shapes.Add(newShape);
+                }
+
+                index++;
+            }
             
             return drawInfo;
         }
