@@ -24,6 +24,8 @@ namespace Espresso.EspInterface
     {
         None,
         Fit,
+        Scale,
+        Cover,
         Stretch
     }
 
@@ -881,7 +883,7 @@ namespace Espresso.EspInterface
                 parentSize = parentType.GetProperty("AbsoluteSize")?.GetValue(_parent) as EsVector2<float> ?? new();
                 parentPosition = parentType.GetProperty("AbsolutePosition")?.GetValue(_parent) as EsVector2<float> ?? new();
             }
-
+            
             EsVector2<float> size = new(
                 (parentSize.X * _size.Scale.X) + _size.Offset.X,
                 (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
@@ -890,7 +892,7 @@ namespace Espresso.EspInterface
                 (parentSize.X * _position.Scale.X) + _position.Offset.X,
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
-
+            
             int sizeConstraintIndex = _modifierNames.IndexOf("EsSizeConstraint");
 
             if (sizeConstraintIndex != -1 && _modifiers[sizeConstraintIndex] is EsSizeConstraint sizeConstraint)
@@ -905,10 +907,9 @@ namespace Espresso.EspInterface
             }
 
             if (!parentIsWindow) position += parentPosition;
-
+            
             _absoluteSize = size;
             _absolutePosition = position;
-
             (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = EsRectangle.Calculate(size, position, _rotation);
             EsDrawInfo drawInfo = new();
             EsShapeInfo shapeInfo = new() { Points = new(), Lines = new(), Fill = _backgroundColor };
@@ -918,7 +919,7 @@ namespace Espresso.EspInterface
             foreach ((int start, int end) line in calculated.lines) shapeInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
 
             drawInfo.Shapes.Add(shapeInfo);
-
+            
             foreach (IEsInstance child in _children)
             {
                 if (child is IEsInterface gui && !gui.Visible) continue;
@@ -929,6 +930,13 @@ namespace Espresso.EspInterface
 
                 foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes) drawInfo.Shapes.Add(childShapeInfo);
             }
+
+            Func<float, float, float> safeDivide = (numerator, denominator) => {
+                if (denominator == 0f) return (numerator == 0f) ? 1f : 0f;
+                
+                return numerator / denominator;
+            };
+
 
             foreach (EsDrawInfo drawing in _drawings)
             {
@@ -947,23 +955,35 @@ namespace Espresso.EspInterface
                 }
 
                 EsVector2<float> drawingSize = new(maxX - minX, maxY - minY);
-                float drawingAspectRatio = drawingSize.X / drawingSize.Y;
-                float canvasAspectRatio = size.X / size.Y;
                 float scaleX = 1f, scaleY = 1f;
 
                 switch (_scaleRule)
                 {
                     case EsScaleRule.Fit:
-                        float fitScale = Math.Min(size.X / drawingSize.X, size.Y / drawingSize.Y);
+                        float fitScale = Math.Min(safeDivide(size.X, drawingSize.X), safeDivide(size.Y, drawingSize.Y));
                         scaleX = fitScale;
                         scaleY = fitScale;
 
                         break;
-
+                    case EsScaleRule.Cover:
+                        scaleX = safeDivide(size.X, drawingSize.X);
+                        scaleY = safeDivide(size.Y, drawingSize.Y);
+                        
+                        break;
+                    case EsScaleRule.Scale:
+                        float targetWidthScaled = size.X * _size.Scale.X;
+                        float targetHeightScaled = size.Y * _size.Scale.Y;
+                        float scaleFactorXProportional = safeDivide(targetWidthScaled, drawingSize.X);
+                        float scaleFactorYProportional = safeDivide(targetHeightScaled, drawingSize.Y);
+                        float finalProportionalScale = Math.Min(scaleFactorXProportional, scaleFactorYProportional);
+                        scaleX = finalProportionalScale;
+                        scaleY = finalProportionalScale;
+                        
+                        break;
                     case EsScaleRule.Stretch:
-                        scaleX = size.X / drawingSize.X;
-                        scaleY = size.Y / drawingSize.Y;
-
+                        scaleX = safeDivide(size.X * _size.Scale.X, drawingSize.X);
+                        scaleY = safeDivide(size.Y * _size.Scale.Y, drawingSize.Y);
+                        
                         break;
                     default: break;
                 }
