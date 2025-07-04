@@ -23,7 +23,7 @@ namespace Example
 
             EsTriangle triangle = new(
                 EsTriangleType.Equilateral, new(200, 200), new(100, 100), fill: new EsColor3(EsColors.DarkSlateBlue)
-            ); // Create a new equilateral triangle drawing with the size of 200x200 and a DarkSlateBlue (0x4734347) color on the center of the canvas.
+            ); // Create a new equilateral triangle drawing with the size of 200x200 and a DarkSlateBlue (0x4734347) color in the center of the canvas.
 
             canvas.Draw(triangle); // Draw the triangle on the canvas.
             window.Run(); // Execute the main loop.
