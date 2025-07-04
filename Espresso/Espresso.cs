@@ -24,6 +24,30 @@ namespace Espresso
     
     // Enums
 
+    public enum EsPlatform
+    {
+        Unknown = -1,
+        AtariMiNt,
+        FreeBsd,
+        Haiku,
+        Linux,
+        MacOs,
+        NetBsd,
+        OpenBsd,
+        Os2,
+        QnxNeutrino,
+        Solaris,
+        Windows,
+        WinGdk
+    }
+
+    public enum EsPlatformTheme
+    {
+        Unknown = -1,
+        Dark,
+        Light
+    }
+
     public enum EsWindowBorder
     {
         None,
@@ -48,8 +72,78 @@ namespace Espresso
     
     // Classes
 
+    public static class EsCurrentPlatform
+    {
+        // Properties
+        
+        public static EsPlatform Platform
+        {
+            get
+            {
+                Dictionary<string, EsPlatform> platforms = new()
+                {
+                    { "Atari MiNT", EsPlatform.AtariMiNt },
+                    { "FreeBSD", EsPlatform.FreeBsd },
+                    { "Haiku", EsPlatform.Haiku },
+                    { "Linux", EsPlatform.Linux },
+                    { "macOS", EsPlatform.MacOs },
+                    { "NetBSD", EsPlatform.NetBsd },
+                    { "OpenBSD", EsPlatform.OpenBsd },
+                    { "OS/2", EsPlatform.Os2 },
+                    { "QNX Neutrino", EsPlatform.QnxNeutrino },
+                    { "Solaris", EsPlatform.Solaris },
+                    { "Windows", EsPlatform.Windows },
+                    { "WinGdk", EsPlatform.WinGdk }
+                };
+                bool found = platforms.TryGetValue(SDL.GetPlatform(), out EsPlatform platform);
+
+                return found ? platform : EsPlatform.Unknown;
+            }
+        }
+
+        public static EsPlatformTheme PlatformTheme
+        {
+            get
+            {
+                EsPlatformTheme theme = EsPlatformTheme.Unknown;
+                
+                if (SDL.IsMainThread())
+                {
+                    switch (SDL.GetSystemTheme())
+                    {
+                        case SDL.SystemTheme.Unknown: theme = EsPlatformTheme.Unknown; break;
+                        case SDL.SystemTheme.Dark: theme = EsPlatformTheme.Dark; break;
+                        case SDL.SystemTheme.Light: theme = EsPlatformTheme.Light; break;
+                    }
+                }
+                else
+                {
+                    SDL.RunOnMainThread((IntPtr _) =>
+                    {
+                        switch (SDL.GetSystemTheme())
+                        {
+                            case SDL.SystemTheme.Unknown: theme = EsPlatformTheme.Unknown; break;
+                            case SDL.SystemTheme.Dark: theme = EsPlatformTheme.Dark; break;
+                            case SDL.SystemTheme.Light: theme = EsPlatformTheme.Light; break;
+                        }
+                    }, IntPtr.Zero, false);
+                }
+                
+                return theme;
+            }
+        }
+    }
+
     public class EsWindow : IEsInstance
     {
+        // Statics
+        
+        public static EsPlatform[] SupportedPlatform = new[]
+        {
+            EsPlatform.AtariMiNt, EsPlatform.FreeBsd, EsPlatform.Haiku, EsPlatform.Linux, EsPlatform.MacOs, EsPlatform.NetBsd, EsPlatform.OpenBsd, EsPlatform.Os2, EsPlatform.QnxNeutrino,
+            EsPlatform.Solaris, EsPlatform.Windows, EsPlatform.WinGdk
+        };
+        
         // Properties and Fields
         
         private IntPtr _window;
@@ -172,15 +266,8 @@ namespace Espresso
             set
             {
                 if (!_initialized) throw new ApplicationException("Window must be initialized first before being modified.");
-
-                if (_modifierNames.Contains("EsSizeConstraint"))
-                {
-                    EsSizeConstraint sizeConstraint = _modifiers[_modifierNames.IndexOf("EsSizeConstraint")] as EsSizeConstraint;
-                    EsVector2<float> minSize = sizeConstraint?.MinimumSize ?? new(int.MinValue, int.MinValue);
-                    EsVector2<float> maxSize = sizeConstraint?.MaximumSize ?? new(int.MaxValue, int.MaxValue);
-                    _size = new(int.Clamp(value.X, (int)minSize.X, (int)maxSize.X), int.Clamp(value.Y, (int)minSize.Y, (int)maxSize.Y));
-                }
-                else _size = value;
+                
+                _size = value;
 
                 if (SDL.IsMainThread())
                 {
@@ -318,6 +405,8 @@ namespace Espresso
 
         public EsWindow(string? name = null, EsVector2<int>? size = null, EsVector2<int>? position = null)
         {
+            if (!SupportedPlatform.Contains(EsCurrentPlatform.Platform)) throw new NotSupportedException($"Unsupported platform for EsWindow: {EsCurrentPlatform.Platform}.");
+            
             _stopwatch = new();
             _modifierNames = new();
             _modifiers = new();
