@@ -828,11 +828,11 @@ namespace Espresso
             SDL.SetRenderDrawColor(_renderer, r, g, b, a);
             SDL.RenderFillRect(_renderer, _surface);
 
-            foreach (IEsInstance descendant in GetDescendants())
+            foreach (IEsInstance child in _children)
             {
-                if (descendant is IEsInterface gui && !gui.Visible) continue;
+                if (child is IEsInterface gui && !gui.Visible) continue;
                 
-                EsDrawInfo? drawInfo = descendant.Render();
+                EsDrawInfo? drawInfo = child.Render();
                 
                 if (drawInfo == null) continue;
 

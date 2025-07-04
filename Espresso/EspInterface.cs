@@ -465,6 +465,17 @@ namespace Espresso.EspInterface
             foreach ((int start, int end) line in calculated.lines) shapeInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
 
             drawInfo.Shapes.Add(shapeInfo);
+
+            foreach (IEsInstance child in _children)
+            {
+                if (child is IEsInterface gui && !gui.Visible) continue;
+
+                EsDrawInfo? childDrawInfo = child.Render();
+                
+                if (childDrawInfo == null) continue;
+
+                foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes) drawInfo.Shapes.Add(childShapeInfo);
+            }
             
             return drawInfo;
         }
@@ -907,6 +918,17 @@ namespace Espresso.EspInterface
             foreach ((int start, int end) line in calculated.lines) shapeInfo.Lines.Add(new() { Start = line.start, End = line.end, Fill = _backgroundColor });
 
             drawInfo.Shapes.Add(shapeInfo);
+
+            foreach (IEsInstance child in _children)
+            {
+                if (child is IEsInterface gui && !gui.Visible) continue;
+
+                EsDrawInfo? childDrawInfo = child.Render();
+                
+                if (childDrawInfo == null) continue;
+
+                foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes) drawInfo.Shapes.Add(childShapeInfo);
+            }
 
             foreach (EsDrawInfo drawing in _drawings)
             {
