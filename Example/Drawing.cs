@@ -1,5 +1,5 @@
 ﻿using Espresso; // Import Espresso namespace.
-using Espresso.EspInterface; // Import Espresso.EspInterface for EsCanvas.
+using Espresso.EspInterface; // Import Espresso.EspInterface for EsCanvas and EsTriangle.
 using Espresso.EspStyling; // Import Espresso.EspStyling for EsColor3
 
 namespace Example
@@ -17,14 +17,14 @@ namespace Example
             EsCanvas canvas = new(window); // Create a new canvas for drawing and set the parent to the window.
 
             canvas.Size = new(0.5f, 0.5f); // Sets the canvas width and height to 50% of the parent width.
-            canvas.Position = new(0.25f, 0.25f); // Center the canvas on the screen (1 - Size / 2).
+            canvas.Position = new(0.25f, 0.25f); // Center the canvas on the window (1 - Size / 2).
             canvas.BackgroundColor = new EsColor3(EsColors.MediumSlateBlue); // Set the canvas background color to MediumSlateBlue (0x8087790).
 
             EsTriangle triangle = new(
                 EsTriangleType.Equilateral, new(200, 200), fill: new EsColor3(EsColors.DarkSlateBlue)
             ); // Create a new equilateral triangle drawing with the size of 200x200 and a DarkSlateBlue (0x4734347) color on the top left of the canvas.
 
-            canvas.Draw(triangle); // Draw the triangle on the screen.
+            canvas.Draw(triangle); // Draw the triangle on the canvas.
             window.Run(); // Execute the main loop.
         }
     }
