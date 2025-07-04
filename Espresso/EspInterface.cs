@@ -12,7 +12,7 @@ namespace Espresso.EspInterface
 {
     // Enums
 
-    public enum EsAutomaticSize
+    public enum EsAutomaticSizeRule
     {
         None,
         Horizontal,
@@ -44,7 +44,7 @@ namespace Espresso.EspInterface
         
         public bool Active { get; set; }
         public bool Visible { get; set; }
-        public EsAutomaticSize AutoSize { get; set; }
+        public EsAutomaticSizeRule AutoSize { get; set; }
         public EsVector2<float> AbsoluteSize { get; }
         public EsVector2<float> AbsolutePosition { get; }
         public EsLayoutVector<float, int> Size { get; set; }
@@ -83,7 +83,7 @@ namespace Espresso.EspInterface
         private string _name;
         private bool _active;
         private bool _visible;
-        private EsAutomaticSize _autoSize;
+        private EsAutomaticSizeRule _autoSize;
         private EsVector2<float> _absoluteSize;
         private EsVector2<float> _absolutePosition;
         private EsLayoutVector<float, int> _size;
@@ -120,7 +120,7 @@ namespace Espresso.EspInterface
         
         public bool Visible { get => _visible; set => _visible = value; }
         
-        public EsAutomaticSize AutoSize { get => _autoSize; set => _autoSize = value; }
+        public EsAutomaticSizeRule AutoSize { get => _autoSize; set => _autoSize = value; }
         
         public EsVector2<float> AbsoluteSize { get => _absoluteSize; }
         
@@ -159,7 +159,7 @@ namespace Espresso.EspInterface
             _name = name;
             _active = true;
             _visible = true;
-            _autoSize = EsAutomaticSize.None;
+            _autoSize = EsAutomaticSizeRule.None;
             _size = new(200, 200);
             _position = new();
             _rotation = 0;
@@ -449,7 +449,7 @@ namespace Espresso.EspInterface
         private string _name;
         private bool _active;
         private bool _visible;
-        private EsAutomaticSize _autoSize;
+        private EsAutomaticSizeRule _autoSize;
         private EsVector2<float> _absoluteSize;
         private EsVector2<float> _absolutePosition;
         private EsLayoutVector<float, int> _size;
@@ -486,7 +486,7 @@ namespace Espresso.EspInterface
         
         public bool Visible { get => _visible; set => _visible = value; }
         
-        public EsAutomaticSize AutoSize { get => _autoSize; set => _autoSize = value; }
+        public EsAutomaticSizeRule AutoSize { get => _autoSize; set => _autoSize = value; }
         
         public EsVector2<float> AbsoluteSize { get => _absoluteSize; }
         
@@ -526,7 +526,7 @@ namespace Espresso.EspInterface
             _name = name;
             _active = true;
             _visible = true;
-            _autoSize = EsAutomaticSize.None;
+            _autoSize = EsAutomaticSizeRule.None;
             _size = new(200, 200);
             _position = new();
             _rotation = 0;
