@@ -687,6 +687,13 @@ namespace Espresso
             return new(_modifiers);
         }
 
+        public IEsModifier? GetModifier(string modifier)
+        {
+            int index = _modifierNames.IndexOf(modifier);
+            
+            return index != -1 ? _modifiers[index] : null;
+        }
+
         public void AddModifier(IEsModifier modifier)
         {
             if (modifier == null) throw new ArgumentNullException(nameof(modifier));

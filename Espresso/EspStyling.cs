@@ -1,6 +1,7 @@
 ﻿// Imports
 
 using Espresso.EspInstance;
+using Espresso.EspInterface;
 using Espresso.EspMath;
 
 // Styling Namespace
@@ -942,7 +943,7 @@ namespace Espresso.EspStyling
 
         public bool Active { get => _active; set => _active = value; }
         
-        // Constructors
+        // Constructors and Methods
 
         public EsSizeConstraint(IEsInstance? parent = null)
         {
@@ -956,6 +957,11 @@ namespace Espresso.EspStyling
                 if (!_parent.HasModifier("EsSizeConstraint")) _parent.AddModifier(this);
                 else _parent = null;
             }
+        }
+
+        public override string ToString()
+        {
+            return $"(EsSizeConstraint)";
         }
     }
 }

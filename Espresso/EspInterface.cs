@@ -167,6 +167,7 @@ namespace Espresso.EspInterface
             _active = true;
             _visible = true;
             _autoSizeRule = EsAutomaticSizeRule.None;
+            _absoluteSize = new(200, 200);
             _size = new(200, 200);
             _position = new();
             _rotation = 0;
@@ -181,7 +182,20 @@ namespace Espresso.EspInterface
             if (parent != null)
             {
                 _parent.AddChild(this);
+                
+                Type parentType = _parent.GetType();
+                
+                if (_parent.GetType() == typeof(EsWindow))
+                {
+                    EsVector2<int> windowPosition = parentType.GetProperty("Position")?.GetValue(_parent) as EsVector2<int> ?? new();
+                    _absolutePosition = new(windowPosition.X, windowPosition.Y);
+                }
+                else
+                {
+                    _absolutePosition = parentType.GetProperty("AbsolutePosition")?.GetValue(_parent) as EsVector2<float> ?? new();
+                }
             }
+            else _absolutePosition = new();
         }
 
         public IEsInstance? Clone()
@@ -273,6 +287,13 @@ namespace Espresso.EspInterface
         public List<IEsModifier> GetModifiers()
         {
             return new(_modifiers);
+        }
+
+        public IEsModifier? GetModifier(string modifier)
+        {
+            int index = _modifierNames.IndexOf(modifier);
+            
+            return index != -1 ? _modifiers[index] : null;
         }
         
         public void AddModifier(IEsModifier modifier)
@@ -408,7 +429,7 @@ namespace Espresso.EspInterface
                 parentSize = parentType.GetProperty("AbsoluteSize")?.GetValue(_parent) as EsVector2<float> ?? new();
                 parentPosition = parentType.GetProperty("AbsolutePosition")?.GetValue(_parent) as EsVector2<float> ?? new();
             }
-
+            
             EsVector2<float> size = new(
                 (parentSize.X * _size.Scale.X) + _size.Offset.X,
                 (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
@@ -418,19 +439,17 @@ namespace Espresso.EspInterface
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
 
-            if (_modifierNames.Contains("EsSizeConstraint"))
-            {
-                EsSizeConstraint? sizeConstraint = null;
+            int sizeConstraintIndex = _modifierNames.IndexOf("EsSizeConstraint");
 
-                foreach (IEsModifier modifier in _modifiers)
+            if (sizeConstraintIndex != -1 && _modifiers[sizeConstraintIndex] is EsSizeConstraint sizeConstraint)
+            {
+                if (sizeConstraint.Active)
                 {
-                    if (modifier.ModifierName == "EsSizeConstraint") sizeConstraint = (EsSizeConstraint)modifier; break;
+                    size = new(
+                        float.Clamp(size.X, sizeConstraint.MinimumSize.X, sizeConstraint.MaximumSize.X),
+                        float.Clamp(size.Y, sizeConstraint.MinimumSize.Y, sizeConstraint.MaximumSize.Y)
+                    );
                 }
-                
-                size = new(
-                    float.Clamp(size.X, sizeConstraint?.MinimumSize.X ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.X ?? Single.PositiveInfinity),
-                    float.Clamp(size.Y, sizeConstraint?.MinimumSize.Y ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.Y ?? Single.PositiveInfinity)
-                );
             }
 
             if (!parentIsWindow) position += parentPosition;
@@ -659,6 +678,13 @@ namespace Espresso.EspInterface
         {
             return new(_modifiers);
         }
+
+        public IEsModifier? GetModifier(string modifier)
+        {
+            int index = _modifierNames.IndexOf(modifier);
+            
+            return index != -1 ? _modifiers[index] : null;
+        }
         
         public void AddModifier(IEsModifier modifier)
         {
@@ -854,14 +880,17 @@ namespace Espresso.EspInterface
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
 
-            if (_modifierNames.Contains("EsSizeConstraint"))
+            int sizeConstraintIndex = _modifierNames.IndexOf("EsSizeConstraint");
+
+            if (sizeConstraintIndex != -1 && _modifiers[sizeConstraintIndex] is EsSizeConstraint sizeConstraint)
             {
-                EsSizeConstraint? sizeConstraint = _modifiers[_modifierNames.IndexOf("EsSizeConstraint")] as EsSizeConstraint;
-                
-                size = new(
-                    float.Clamp(size.X, sizeConstraint?.MinimumSize.X ?? float.NegativeInfinity, sizeConstraint?.MaximumSize.X ?? float.PositiveInfinity),
-                    float.Clamp(size.Y, sizeConstraint?.MinimumSize.Y ?? float.NegativeInfinity, sizeConstraint?.MaximumSize.Y ?? float.PositiveInfinity)
-                );
+                if (sizeConstraint.Active)
+                {
+                    size = new(
+                        float.Clamp(size.X, sizeConstraint.MinimumSize.X, sizeConstraint.MaximumSize.X),
+                        float.Clamp(size.Y, sizeConstraint.MinimumSize.Y, sizeConstraint.MaximumSize.Y)
+                    );
+                }
             }
 
             if (!parentIsWindow) position += parentPosition;
