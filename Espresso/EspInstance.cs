@@ -23,7 +23,7 @@ namespace Espresso.EspInstance
     
     // Interfaces
 
-    public interface IEsInstance
+    public interface IEsInstance : IDisposable
     {
         // Properties
         
@@ -38,7 +38,6 @@ namespace Espresso.EspInstance
         // Methods
 
         public IEsInstance? Clone();
-        public void Destroy();
         public List<IEsInstance> ChildrenSelector(string selector);
         public List<IEsInstance> DescendantsSelector(string selector);
         public List<IEsModifier> GetModifiers();

@@ -599,13 +599,26 @@ namespace Espresso
             throw new NotImplementedException("Application instance is not cloneable.");
         }
 
-        public void Destroy()
+        public void Dispose()
         {
-            if (!_initialized) throw new ApplicationException("Window must be initialized first before being destroyed.");
+            if (!_initialized) throw new ApplicationException("Window must be initialized first before being disposed.");
 
             _running = false;
-            _initialized = true;
+            _initialized = false;
+            
+            foreach (IEsModifier modifier in _modifiers) modifier.Parent = null;
+            
+            _modifiers.Clear();
 
+            foreach (IEsInstance descendant in GetDescendants())
+            {
+                descendant.Parent = null;
+                
+                descendant.Dispose();
+            }
+            
+            _children.Clear();
+            _tags.Clear();
             _onEnd.Emit();
         }
 

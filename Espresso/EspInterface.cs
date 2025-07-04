@@ -191,9 +191,23 @@ namespace Espresso.EspInterface
             return JsonSerializer.Deserialize<EsFrame>(serialized);
         }
 
-        public void Destroy()
+        public void Dispose()
         {
-            // TODO: Add destroy method to EsFrame.
+            foreach (IEsModifier modifier in _modifiers) modifier.Parent = null;
+            
+            _modifiers.Clear();
+
+            foreach (IEsInstance descendant in GetDescendants())
+            {
+                descendant.Parent = null;
+                
+                descendant.Dispose();
+            }
+            
+            _children.Clear();
+            _tags.Clear();
+            
+            _parent = null;
         }
 
         public List<IEsInstance> ChildrenSelector(string selector)
@@ -562,9 +576,23 @@ namespace Espresso.EspInterface
             return JsonSerializer.Deserialize<EsFrame>(serialized);
         }
 
-        public void Destroy()
+        public void Dispose()
         {
-            // TODO: Add destroy method to EsCanvas.
+            foreach (IEsModifier modifier in _modifiers) modifier.Parent = null;
+            
+            _modifiers.Clear();
+
+            foreach (IEsInstance descendant in GetDescendants())
+            {
+                descendant.Parent = null;
+                
+                descendant.Dispose();
+            }
+            
+            _children.Clear();
+            _tags.Clear();
+            
+            _parent = null;
         }
 
         public List<IEsInstance> ChildrenSelector(string selector)
