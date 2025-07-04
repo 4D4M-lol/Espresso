@@ -19,6 +19,7 @@ namespace Example
             canvas.Size = new(0.5f, 0.5f); // Sets the canvas width and height to 50% of the parent width.
             canvas.Position = new(0.25f, 0.25f); // Center the canvas on the window (1 - Size / 2).
             canvas.BackgroundColor = new EsColor3(EsColors.MediumSlateBlue); // Set the canvas background color to MediumSlateBlue (0x8087790).
+            canvas.ScaleRule = EsScaleRule.Stretch; // Set the canvas scale rule to Stretch, so all the drawing in it got stretched when the canvas size changed.
 
             EsTriangle triangle = new(
                 EsTriangleType.Equilateral, new(200, 200), fill: new EsColor3(EsColors.DarkSlateBlue)

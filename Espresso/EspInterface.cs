@@ -20,6 +20,13 @@ namespace Espresso.EspInterface
         Both
     }
 
+    public enum EsScaleRule
+    {
+        None,
+        Fit,
+        Stretch
+    }
+
     public enum EsTriangleType
     {
         Acute,
@@ -44,7 +51,7 @@ namespace Espresso.EspInterface
         
         public bool Active { get; set; }
         public bool Visible { get; set; }
-        public EsAutomaticSizeRule AutoSize { get; set; }
+        public EsAutomaticSizeRule AutoSizeRule { get; set; }
         public EsVector2<float> AbsoluteSize { get; }
         public EsVector2<float> AbsolutePosition { get; }
         public EsLayoutVector<float, int> Size { get; set; }
@@ -83,7 +90,7 @@ namespace Espresso.EspInterface
         private string _name;
         private bool _active;
         private bool _visible;
-        private EsAutomaticSizeRule _autoSize;
+        private EsAutomaticSizeRule _autoSizeRule;
         private EsVector2<float> _absoluteSize;
         private EsVector2<float> _absolutePosition;
         private EsLayoutVector<float, int> _size;
@@ -120,7 +127,7 @@ namespace Espresso.EspInterface
         
         public bool Visible { get => _visible; set => _visible = value; }
         
-        public EsAutomaticSizeRule AutoSize { get => _autoSize; set => _autoSize = value; }
+        public EsAutomaticSizeRule AutoSizeRule { get => _autoSizeRule; set => _autoSizeRule = value; }
         
         public EsVector2<float> AbsoluteSize { get => _absoluteSize; }
         
@@ -159,7 +166,7 @@ namespace Espresso.EspInterface
             _name = name;
             _active = true;
             _visible = true;
-            _autoSize = EsAutomaticSizeRule.None;
+            _autoSizeRule = EsAutomaticSizeRule.None;
             _size = new(200, 200);
             _position = new();
             _rotation = 0;
@@ -449,7 +456,8 @@ namespace Espresso.EspInterface
         private string _name;
         private bool _active;
         private bool _visible;
-        private EsAutomaticSizeRule _autoSize;
+        private EsAutomaticSizeRule _autoSizeRule;
+        private EsScaleRule _scaleRule;
         private EsVector2<float> _absoluteSize;
         private EsVector2<float> _absolutePosition;
         private EsLayoutVector<float, int> _size;
@@ -486,7 +494,9 @@ namespace Espresso.EspInterface
         
         public bool Visible { get => _visible; set => _visible = value; }
         
-        public EsAutomaticSizeRule AutoSize { get => _autoSize; set => _autoSize = value; }
+        public EsAutomaticSizeRule AutoSizeRule { get => _autoSizeRule; set => _autoSizeRule = value; }
+        
+        public EsScaleRule ScaleRule { get => _scaleRule; set => _scaleRule = value; }
         
         public EsVector2<float> AbsoluteSize { get => _absoluteSize; }
         
@@ -526,7 +536,8 @@ namespace Espresso.EspInterface
             _name = name;
             _active = true;
             _visible = true;
-            _autoSize = EsAutomaticSizeRule.None;
+            _autoSizeRule = EsAutomaticSizeRule.None;
+            _scaleRule = EsScaleRule.None;
             _size = new(200, 200);
             _position = new();
             _rotation = 0;
@@ -817,23 +828,19 @@ namespace Espresso.EspInterface
 
             if (_modifierNames.Contains("EsSizeConstraint"))
             {
-                EsSizeConstraint? sizeConstraint = null;
-
-                foreach (IEsModifier modifier in _modifiers)
-                {
-                    if (modifier.ModifierName == "EsSizeConstraint") sizeConstraint = (EsSizeConstraint)modifier; break;
-                }
+                EsSizeConstraint? sizeConstraint = _modifiers[_modifierNames.IndexOf("EsSizeConstraint")] as EsSizeConstraint;
                 
                 size = new(
-                    float.Clamp(size.X, sizeConstraint?.MinimumSize.X ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.X ?? Single.PositiveInfinity),
-                    float.Clamp(size.Y, sizeConstraint?.MinimumSize.Y ?? Single.NegativeInfinity, sizeConstraint?.MaximumSize.Y ?? Single.PositiveInfinity)
+                    float.Clamp(size.X, sizeConstraint?.MinimumSize.X ?? float.NegativeInfinity, sizeConstraint?.MaximumSize.X ?? float.PositiveInfinity),
+                    float.Clamp(size.Y, sizeConstraint?.MinimumSize.Y ?? float.NegativeInfinity, sizeConstraint?.MaximumSize.Y ?? float.PositiveInfinity)
                 );
             }
 
             if (!parentIsWindow) position += parentPosition;
-            
+
             _absoluteSize = size;
             _absolutePosition = position;
+
             (List<EsVector2<float>> points, List<(int start, int end)> lines) calculated = EsRectangle.Calculate(size, position, _rotation);
             EsDrawInfo drawInfo = new();
             EsShapeInfo shapeInfo = new() { Points = new(), Lines = new(), Fill = _backgroundColor };
@@ -844,25 +851,70 @@ namespace Espresso.EspInterface
 
             drawInfo.Shapes.Add(shapeInfo);
 
-            int index = 0;
-
             foreach (EsDrawInfo drawing in _drawings)
             {
+                float minX = float.MaxValue, minY = float.MaxValue;
+                float maxX = float.MinValue, maxY = float.MinValue;
+
                 foreach (EsShapeInfo shape in drawing.Shapes)
                 {
-                    List<EsPointInfo> points = new();
-                    List<EsLineInfo> lines = new();
-
-                    foreach (EsPointInfo point in shape.Points) points.Add(new() { Position = new(point.Position.X + position.X, point.Position.Y + position.Y, 0), });
-
-                    foreach (EsLineInfo line in shape.Lines) lines.Add(new() { Start = line.Start + index + 4, End = line.End + index + 4 });
-
-                    EsShapeInfo newShape = new() { Points = points, Lines = lines, Fill = shape.Fill };
-                    
-                    drawInfo.Shapes.Add(newShape);
+                    foreach (EsPointInfo point in shape.Points)
+                    {
+                        minX = Math.Min(minX, point.Position.X);
+                        minY = Math.Min(minY, point.Position.Y);
+                        maxX = Math.Max(maxX, point.Position.X);
+                        maxY = Math.Max(maxY, point.Position.Y);
+                    }
                 }
 
-                index++;
+                EsVector2<float> drawingSize = new(maxX - minX, maxY - minY);
+                float drawingAspectRatio = drawingSize.X / drawingSize.Y;
+                float canvasAspectRatio = size.X / size.Y;
+                float scaleX = 1f, scaleY = 1f;
+
+                switch (_scaleRule)
+                {
+                    case EsScaleRule.Fit:
+                        float fitScale = Math.Min(size.X / drawingSize.X, size.Y / drawingSize.Y);
+                        scaleX = fitScale;
+                        scaleY = fitScale;
+
+                        break;
+
+                    case EsScaleRule.Stretch:
+                        scaleX = size.X / drawingSize.X;
+                        scaleY = size.Y / drawingSize.Y;
+
+                        break;
+                    default: break;
+                }
+
+                foreach (EsShapeInfo shape in drawing.Shapes)
+                {
+                    List<EsPointInfo> scaledPoints = new();
+                    List<EsLineInfo> scaledLines = new();
+
+                    foreach (EsPointInfo point in shape.Points)
+                    {
+                        scaledPoints.Add(new EsPointInfo()
+                        {
+                            Position = new(
+                                (point.Position.X * scaleX) + position.X,
+                                (point.Position.Y * scaleY) + position.Y,
+                                point.Position.Z
+                            )
+                        });
+                    }
+
+                    foreach (EsLineInfo line in shape.Lines) scaledLines.Add(new() { Start = line.Start, End = line.End, Fill = shape.Fill });
+
+                    drawInfo.Shapes.Add(new EsShapeInfo()
+                    {
+                        Points = scaledPoints,
+                        Lines = scaledLines,
+                        Fill = shape.Fill
+                    });
+                }
             }
             
             return drawInfo;
@@ -1081,7 +1133,6 @@ namespace Espresso.EspInterface
     {
         // Properties and Fields
         
-        private List<IEsModifier> _modifiers;
         private EsVector2<float> _size;
         private EsVector2<float> _position;
         private float _rotation;
