@@ -444,13 +444,10 @@ namespace Espresso.EspInterface
 
             if (sizeConstraintIndex != -1 && _modifiers[sizeConstraintIndex] is EsSizeConstraint sizeConstraint)
             {
-                if (sizeConstraint.Active)
-                {
-                    size = new(
-                        float.Clamp(size.X, sizeConstraint.MinimumSize.X, sizeConstraint.MaximumSize.X),
-                        float.Clamp(size.Y, sizeConstraint.MinimumSize.Y, sizeConstraint.MaximumSize.Y)
-                    );
-                }
+                if (sizeConstraint.Active) size = new(
+                    float.Clamp(size.X, sizeConstraint.MinimumSize.X, sizeConstraint.MaximumSize.X),
+                    float.Clamp(size.Y, sizeConstraint.MinimumSize.Y, sizeConstraint.MaximumSize.Y)
+                );
             }
 
             if (!parentIsWindow) position += parentPosition;
@@ -545,24 +542,15 @@ namespace Espresso.EspInterface
                 
                 (int offsetX, int offsetY) = (_size.Offset.X, _size.Offset.Y);
                 
-                if (_autoSizeRule == EsAutomaticSizeRule.Horizontal || _autoSizeRule == EsAutomaticSizeRule.Both)
-                {
-                    offsetX = (int)(requiredSize.X - (parentSize.X * _size.Scale.X));
-                }
+                if (_autoSizeRule == EsAutomaticSizeRule.Horizontal || _autoSizeRule == EsAutomaticSizeRule.Both) offsetX = (int)(requiredSize.X - (parentSize.X * _size.Scale.X));
 
-                if (_autoSizeRule == EsAutomaticSizeRule.Vertical || _autoSizeRule == EsAutomaticSizeRule.Both)
-                {
-                    offsetY = (int)(requiredSize.Y - (parentSize.Y * _size.Scale.Y));
-                }
+                if (_autoSizeRule == EsAutomaticSizeRule.Vertical || _autoSizeRule == EsAutomaticSizeRule.Both) offsetY = (int)(requiredSize.Y - (parentSize.Y * _size.Scale.Y));
 
                 _size = new(_size.Scale.X, _size.Scale.Y, offsetX, offsetY);
-                
                 EsVector2<float> newSize = new(
                     (parentSize.X * _size.Scale.X) + _size.Offset.X,
                     (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
                 );
-                
-    
                 float scaleX = oldSize.X != 0 ? newSize.X / oldSize.X : 1f;
                 float scaleY = oldSize.Y != 0 ? newSize.Y / oldSize.Y : 1f;
     
@@ -587,13 +575,10 @@ namespace Espresso.EspInterface
 
                 _absoluteSize = newSize;
 
-                if (_parent is IEsInterface parentInterface)
-                {
-                    _absolutePosition = parentInterface.AbsolutePosition + new EsVector2<float>(
-                        (parentSize.X * _position.Scale.X) + _position.Offset.X,
-                        (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
-                    );
-                }
+                if (_parent is IEsInterface parentInterface) _absolutePosition = parentInterface.AbsolutePosition + new EsVector2<float>(
+                    (parentSize.X * _position.Scale.X) + _position.Offset.X,
+                    (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
+                );
             }
             
             return drawInfo;
@@ -1014,13 +999,10 @@ namespace Espresso.EspInterface
 
             if (sizeConstraintIndex != -1 && _modifiers[sizeConstraintIndex] is EsSizeConstraint sizeConstraint)
             {
-                if (sizeConstraint.Active)
-                {
-                    size = new(
-                        float.Clamp(size.X, sizeConstraint.MinimumSize.X, sizeConstraint.MaximumSize.X),
-                        float.Clamp(size.Y, sizeConstraint.MinimumSize.Y, sizeConstraint.MaximumSize.Y)
-                    );
-                }
+                if (sizeConstraint.Active) size = new(
+                    float.Clamp(size.X, sizeConstraint.MinimumSize.X, sizeConstraint.MaximumSize.X),
+                    float.Clamp(size.Y, sizeConstraint.MinimumSize.Y, sizeConstraint.MaximumSize.Y)
+                );
             }
 
             if (!parentIsWindow) position += parentPosition;
@@ -1037,15 +1019,51 @@ namespace Espresso.EspInterface
 
             drawInfo.Shapes.Add(shapeInfo);
             
-            foreach (IEsInstance child in _children)
+            if (_children.Count != 0)
             {
-                if (child is IEsInterface gui && !gui.Visible) continue;
+                foreach (IEsInstance child in _children)
+                {
+                    if (child is IEsInterface gui && !gui.Visible) continue;
+                    
+                    if (_clip && child is IEsInterface childFrame)
+                    {
+                        EsVector2<float> childPos = childFrame.AbsolutePosition;
+                        EsVector2<float> childSize = childFrame.AbsoluteSize;
 
-                EsDrawInfo? childDrawInfo = child.Render();
-                
-                if (childDrawInfo == null) continue;
+                        if (childPos.X + childSize.X < position.X ||
+                            childPos.X > position.X + size.X ||
+                            childPos.Y + childSize.Y < position.Y ||
+                            childPos.Y > position.Y + size.Y
+                        ) continue;
+                    }
 
-                foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes) drawInfo.Shapes.Add(childShapeInfo);
+                    EsDrawInfo? childDrawInfo = child.Render();
+                    
+                    if (childDrawInfo == null) continue;
+                    
+                    foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes)
+                    {
+                        if (_clip)
+                        {
+                            for (int index = 0; index < childShapeInfo.Points.Count; index++)
+                            {
+                                EsPointInfo childPointInfo = childShapeInfo.Points[index];
+                                EsPointInfo newPointInfo = new()
+                                {
+                                    Position = new(
+                                        Math.Clamp(childPointInfo.Position.X, position.X, position.X + size.X),
+                                        Math.Clamp(childPointInfo.Position.Y, position.Y, position.Y + size.Y),
+                                        childPointInfo.Position.Z
+                                    ),
+                                    Radius = childPointInfo.Radius
+                                };
+                                childShapeInfo.Points[index] = newPointInfo;
+                            }
+                        }
+                        
+                        drawInfo.Shapes.Add(childShapeInfo);
+                    }
+                }
             }
 
             Func<float, float, float> safeDivide = (numerator, denominator) => {
@@ -1053,7 +1071,6 @@ namespace Espresso.EspInterface
                 
                 return numerator / denominator;
             };
-
 
             foreach (EsDrawInfo drawing in _drawings)
             {
@@ -1142,6 +1159,76 @@ namespace Espresso.EspInterface
                         Fill = shape.Fill
                     });
                 }
+            }
+            
+            if (_autoSizeRule != EsAutomaticSizeRule.None && _children.Count > 0)
+            {
+                EsVector2<float> currentSize = new(
+                    (parentSize.X * _size.Scale.X) + _size.Offset.X,
+                    (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
+                );
+                float minX = float.MaxValue;
+                float minY = float.MaxValue;
+                float maxX = float.MinValue;
+                float maxY = float.MinValue;
+
+                foreach (IEsInstance child in _children)
+                {
+                    if (child is not IEsInterface guiChild || !guiChild.Visible) continue;
+
+                    EsVector2<float> childPos = guiChild.AbsolutePosition;
+                    EsVector2<float> childSize = guiChild.AbsoluteSize;
+                    minX = Math.Min(minX, childPos.X);
+                    minY = Math.Min(minY, childPos.Y);
+                    maxX = Math.Max(maxX, childPos.X + childSize.X);
+                    maxY = Math.Max(maxY, childPos.Y + childSize.Y);
+                }
+
+                EsVector2<float> requiredSize = new(
+                    Math.Max(maxX - minX, currentSize.X),
+                    Math.Max(maxY - minY, currentSize.Y)
+                );
+                EsVector2<float> oldSize = currentSize;
+                
+                (int offsetX, int offsetY) = (_size.Offset.X, _size.Offset.Y);
+                
+                if (_autoSizeRule == EsAutomaticSizeRule.Horizontal || _autoSizeRule == EsAutomaticSizeRule.Both) offsetX = (int)(requiredSize.X - (parentSize.X * _size.Scale.X));
+
+                if (_autoSizeRule == EsAutomaticSizeRule.Vertical || _autoSizeRule == EsAutomaticSizeRule.Both) offsetY = (int)(requiredSize.Y - (parentSize.Y * _size.Scale.Y));
+
+                _size = new(_size.Scale.X, _size.Scale.Y, offsetX, offsetY);
+                EsVector2<float> newSize = new(
+                    (parentSize.X * _size.Scale.X) + _size.Offset.X,
+                    (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
+                );
+                float scaleX = oldSize.X != 0 ? newSize.X / oldSize.X : 1f;
+                float scaleY = oldSize.Y != 0 ? newSize.Y / oldSize.Y : 1f;
+
+                foreach (IEsInstance child in _children)
+                {
+                    if (child is not IEsInterface guiChild) continue;
+
+                    EsLayoutVector<float, int> childSize = guiChild.Size;
+
+                    if (childSize.Scale.X > 0 || childSize.Scale.Y > 0)
+                    {
+                        float newScaleX = childSize.Scale.X / scaleX;
+                        float newScaleY = childSize.Scale.Y / scaleY;
+                        guiChild.Size = new(
+                            Math.Max(0, newScaleX), 
+                            Math.Max(0, newScaleY), 
+                            childSize.Offset.X, 
+                            childSize.Offset.Y
+                        );
+                    }
+                }
+
+                _absoluteSize = newSize;
+
+                if (_parent is IEsInterface parentInterface) _absolutePosition = parentInterface.AbsolutePosition + new EsVector2<float>(
+                    (parentSize.X * _position.Scale.X) + _position.Offset.X,
+                    (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
+                );
             }
             
             return drawInfo;
