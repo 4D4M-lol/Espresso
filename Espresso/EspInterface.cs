@@ -440,50 +440,6 @@ namespace Espresso.EspInterface
                 (parentSize.X * _position.Scale.X) + _position.Offset.X,
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
-            
-            if (_autoSizeRule != EsAutomaticSizeRule.None && _children.Count != 0)
-            {
-                float minX = float.MaxValue;
-                float minY = float.MaxValue;
-                float maxX = float.MinValue;
-                float maxY = float.MinValue;
-
-                foreach (IEsInstance child in _children)
-                {
-                    if (child is IEsInterface childFrame)
-                    {
-                        EsVector2<float> childPos = childFrame.AbsolutePosition;
-                        EsVector2<float> childSize = childFrame.AbsoluteSize;
-                        minX = Math.Min(minX, childPos.X);
-                        minY = Math.Min(minY, childPos.Y);
-                        maxX = Math.Max(maxX, childPos.X + childSize.X);
-                        maxY = Math.Max(maxY, childPos.Y + childSize.Y);
-                    }
-                }
-
-                float requiredWidth = maxX - position.X;
-                float requiredHeight = maxY - position.Y;
-                (float width, float height) = (0, 0);
-
-                switch (_autoSizeRule)
-                {
-                    case EsAutomaticSizeRule.Horizontal:
-                        width = requiredWidth;
-                        
-                        break;
-                    case EsAutomaticSizeRule.Vertical:
-                        height = requiredHeight;
-                        
-                        break;
-                    case EsAutomaticSizeRule.Both:
-                        width = requiredWidth;
-                        height = requiredHeight;
-                        
-                        break;
-                }
-
-                size = new(width, height);
-            }
 
             int sizeConstraintIndex = _modifierNames.IndexOf("EsSizeConstraint");
 
@@ -553,8 +509,68 @@ namespace Espresso.EspInterface
                                 childShapeInfo.Points[index] = newPointInfo;
                             }
                         }
+                        
                         drawInfo.Shapes.Add(childShapeInfo);
                     }
+                }
+            }
+            
+            if (_autoSizeRule != EsAutomaticSizeRule.None && _children.Count > 0)
+            {
+                EsVector2<float> currentSize = new(
+                    (parentSize.X * _size.Scale.X) + _size.Offset.X,
+                    (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
+                );
+
+                if (_autoSizeRule != EsAutomaticSizeRule.None && _children.Count > 0)
+                {
+                    float minX = float.MaxValue;
+                    float minY = float.MaxValue;
+                    float maxX = float.MinValue;
+                    float maxY = float.MinValue;
+
+                    foreach (IEsInstance child in _children)
+                    {
+                        if (child is not IEsInterface guiChild || !guiChild.Visible) continue;
+
+                        EsVector2<float> childPos = guiChild.AbsolutePosition;
+                        EsVector2<float> childSize = guiChild.AbsoluteSize;
+                        minX = Math.Min(minX, childPos.X);
+                        minY = Math.Min(minY, childPos.Y);
+                        maxX = Math.Max(maxX, childPos.X + childSize.X);
+                        maxY = Math.Max(maxY, childPos.Y + childSize.Y);
+                    }
+
+                    EsVector2<float> requiredSize = new(
+                        Math.Max(maxX - minX, currentSize.X),
+                        Math.Max(maxY - minY, currentSize.Y)
+                    );
+                    (int offsetX, int offsetY) = (_size.Offset.X, _size.Offset.Y);
+
+                    if (_autoSizeRule == EsAutomaticSizeRule.Horizontal || _autoSizeRule == EsAutomaticSizeRule.Both)
+                    {
+                        offsetX = (int)(requiredSize.X - (parentSize.X * _size.Scale.X));
+                    }
+
+                    if (_autoSizeRule == EsAutomaticSizeRule.Vertical || _autoSizeRule == EsAutomaticSizeRule.Both)
+                    {
+                        offsetY = (int)(requiredSize.Y - (parentSize.Y * _size.Scale.Y));
+                    }
+
+                    _size = new(_size.Scale.X, _size.Scale.Y, offsetX, offsetY);
+                }
+
+                _absoluteSize = new(
+                    (parentSize.X * _size.Scale.X) + _size.Offset.X,
+                    (parentSize.Y * _size.Scale.Y) + _size.Offset.Y
+                );
+
+                if (_parent is IEsInterface parentInterface)
+                {
+                    _absolutePosition = parentInterface.AbsolutePosition + new EsVector2<float>(
+                        (parentSize.X * _position.Scale.X) + _position.Offset.X,
+                        (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
+                    );
                 }
             }
             
