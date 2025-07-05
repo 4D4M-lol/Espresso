@@ -819,6 +819,39 @@ namespace Espresso
             SDL.RenderClear(_renderer);
             SDL.SetRenderDrawBlendMode(_renderer, SDL.BlendMode.Blend);
 
+            Func<List<EsPointInfo>, EsShapeInfo, List<EsPointInfo>> applyMask = (List<EsPointInfo> points, EsShapeInfo mask) =>
+            {
+                if (mask.Points.Count < 3) return points;
+    
+                List<EsPointInfo> maskedPoints = new();
+    
+                float minX = mask.Points.Min(p => p.Position.X);
+                float maxX = mask.Points.Max(p => p.Position.X);
+                float minY = mask.Points.Min(p => p.Position.Y);
+                float maxY = mask.Points.Max(p => p.Position.Y);
+    
+                foreach (EsPointInfo point in points)
+                {
+                    if (point.Position.X >= minX && point.Position.X <= maxX && point.Position.Y >= minY && point.Position.Y <= maxY)
+                    {
+                        maskedPoints.Add(point);
+                    }
+                    else
+                    {
+                        maskedPoints.Add(new()
+                        {
+                            Position = new(
+                                Math.Clamp(point.Position.X, minX, maxX),
+                                Math.Clamp(point.Position.Y, minY, maxY),
+                                point.Position.Z
+                            ),
+                            Radius = point.Radius
+                        });
+                    }
+                }
+    
+                return maskedPoints;
+            };
             uint hex = _fill.Hex;
             byte a = _fill.HasAlpha ? (byte)((hex >> 24) & 0xFF) : (byte)255;
             byte r = (byte)((hex >> 16) & 0xFF);
@@ -832,25 +865,34 @@ namespace Espresso
             {
                 if (child is IEsInterface gui && !gui.Visible) continue;
 
-                if (child is IEsInterface guiChild && guiChild.Clip)
-                {
-                    var absPos = guiChild.AbsolutePosition;
-                    var absSize = guiChild.AbsoluteSize;
-                    var clipRect = new SDL.Rect
-                    {
-                        X = (int)absPos.X,
-                        Y = (int)absPos.Y,
-                        W = (int)absSize.X,
-                        H = (int)absSize.Y
-                    };
-
-                    SDL.SetRenderClipRect(_renderer, clipRect);
-                }
-                else SDL.SetRenderClipRect(_renderer, IntPtr.Zero);
-                
                 EsDrawInfo? drawInfo = child.Render();
                 
                 if (drawInfo == null) continue;
+
+                if (child is IEsInterface guiChild && guiChild.Clip)
+                {
+                    EsVector2<float> absPos = guiChild.AbsolutePosition;
+                    EsVector2<float>  absSize = guiChild.AbsoluteSize;
+                    EsShapeInfo maskShape = new()
+                    {
+                        Points = new()
+                        {
+                            new() { Position = new(absPos.X, absPos.Y, 0) },
+                            new() { Position = new(absPos.X + absSize.X, absPos.Y, 0) },
+                            new() { Position = new(absPos.X + absSize.X, absPos.Y + absSize.Y, 0) },
+                            new() { Position = new(absPos.X, absPos.Y + absSize.Y, 0) }
+                        },
+                        Lines = new()
+                        {
+                            new() { Start = 0, End = 1 },
+                            new() { Start = 1, End = 2 },
+                            new() { Start = 2, End = 3 },
+                            new() { Start = 3, End = 0 }
+                        }
+                    };
+                    
+                    drawInfo.Mask = maskShape;
+                }
 
                 foreach (EsShapeInfo shape in drawInfo.Shapes)
                 {
@@ -860,11 +902,15 @@ namespace Espresso
                     byte shapeFillG = (byte)((shapeFillHex >> 8) & 0xFF);
                     byte shapeFillB = (byte)(shapeFillHex & 0xFF);
                     
-                    if (shape.Points.Count >= 3)
+                    List<EsPointInfo> renderPoints = shape.Points;
+                    
+                    if (drawInfo.Mask != null) renderPoints = applyMask(shape.Points, drawInfo.Mask);
+                    
+                    if (renderPoints.Count >= 3)
                     {
                         SDL.SetRenderDrawColor(_renderer, shapeFillR, shapeFillG, shapeFillB, shapeFillA);
                         
-                        List<SDL.FPoint> sdlPoints = shape.Points
+                        List<SDL.FPoint> sdlPoints = renderPoints
                                                         .Select(p => new SDL.FPoint { X = p.Position.X, Y = p.Position.Y })
                                                         .ToList();
                         float minY = sdlPoints.Min(p => p.Y);
@@ -900,16 +946,13 @@ namespace Espresso
                                     float startX = intersections[i];
                                     float endX = intersections[i + 1];
                                     
-                                    if (Math.Abs(endX - startX) > 0.1f)
-                                    {
-                                        SDL.RenderLine(_renderer, startX, y, endX, y);
-                                    }
+                                    if (Math.Abs(endX - startX) > 0.1f)  SDL.RenderLine(_renderer, startX, y, endX, y);
                                 }
                             }
                         }
                     }
                     
-                    foreach (EsPointInfo point in shape.Points)
+                    foreach (EsPointInfo point in renderPoints)
                     {
                         if (point.Radius > 0)
                         {
@@ -928,11 +971,10 @@ namespace Espresso
                     
                     foreach (EsLineInfo line in shape.Lines)
                     {
-                        if (line.Start >= 0 && line.Start < shape.Points.Count && 
-                            line.End >= 0 && line.End < shape.Points.Count)
+                        if (line.Start >= 0 && line.Start < renderPoints.Count && line.End >= 0 && line.End < renderPoints.Count)
                         {
-                            EsVector3<float> startPoint = shape.Points[line.Start].Position;
-                            EsVector3<float> endPoint = shape.Points[line.End].Position;
+                            EsVector3<float> startPoint = renderPoints[line.Start].Position;
+                            EsVector3<float> endPoint = renderPoints[line.End].Position;
                             uint lineHex = line.Fill.Hex;
                             byte lineR = (byte)((lineHex >> 16) & 0xFF);
                             byte lineG = (byte)((lineHex >> 8) & 0xFF);
@@ -947,8 +989,6 @@ namespace Espresso
                         }
                     }
                 }
-                
-                SDL.SetRenderClipRect(_renderer, IntPtr.Zero);
             }
             
             SDL.RenderPresent(_renderer);

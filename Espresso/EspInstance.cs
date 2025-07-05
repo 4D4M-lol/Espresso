@@ -104,14 +104,18 @@ namespace Espresso.EspInstance
         // Properties and Fields
 
         private List<EsShapeInfo> _shapes;
+        private EsShapeInfo? _mask;
         
         public List<EsShapeInfo> Shapes { get => _shapes; }
+        
+        public EsShapeInfo? Mask { get => _mask; set => _mask = value; }
         
         // Constructors and Methods
 
         public EsDrawInfo(List<EsShapeInfo>? shapes = null)
         {
             _shapes = shapes ?? new();
+            _mask = null;
         }
     }
 }

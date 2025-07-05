@@ -4,7 +4,6 @@ using Espresso.EspInstance;
 using Espresso.EspMath;
 using Espresso.EspScript;
 using Espresso.EspStyling;
-using SDL3;
 using System.Text.Json;
 
 // Interface Namespace
