@@ -963,7 +963,7 @@ namespace Espresso.EspInterface
                         float fitScale = Math.Min(safeDivide(size.X, drawingSize.X), safeDivide(size.Y, drawingSize.Y));
                         scaleX = fitScale;
                         scaleY = fitScale;
-
+                        
                         break;
                     case EsScaleRule.Cover:
                         scaleX = safeDivide(size.X, drawingSize.X);
@@ -971,8 +971,8 @@ namespace Espresso.EspInterface
                         
                         break;
                     case EsScaleRule.Scale:
-                        float targetWidthScaled = size.X * _size.Scale.X;
-                        float targetHeightScaled = size.Y * _size.Scale.Y;
+                        float targetWidthScaled = _size.Scale.X * _absoluteSize.X;
+                        float targetHeightScaled = _size.Scale.Y * _absoluteSize.Y;
                         float scaleFactorXProportional = safeDivide(targetWidthScaled, drawingSize.X);
                         float scaleFactorYProportional = safeDivide(targetHeightScaled, drawingSize.Y);
                         float finalProportionalScale = Math.Min(scaleFactorXProportional, scaleFactorYProportional);
@@ -988,6 +988,12 @@ namespace Espresso.EspInterface
                     default: break;
                 }
 
+                EsVector2<float> scaledDrawingSize = new(drawingSize.X * scaleX, drawingSize.Y * scaleY);
+                EsVector2<float> offset = new(
+                    position.X + (size.X - scaledDrawingSize.X) / 2f,
+                    position.Y + (size.Y - scaledDrawingSize.Y) / 2f
+                );
+
                 foreach (EsShapeInfo shape in drawing.Shapes)
                 {
                     List<EsPointInfo> scaledPoints = new();
@@ -995,11 +1001,16 @@ namespace Espresso.EspInterface
 
                     foreach (EsPointInfo point in shape.Points)
                     {
+                        float normalizedX = point.Position.X - minX;
+                        float normalizedY = point.Position.Y - minY;
+                        float scaledX = normalizedX * scaleX;
+                        float scaledY = normalizedY * scaleY;
+
                         scaledPoints.Add(new EsPointInfo()
                         {
                             Position = new(
-                                (point.Position.X * scaleX) + position.X,
-                                (point.Position.Y * scaleY) + position.Y,
+                                scaledX + offset.X,
+                                scaledY + offset.Y,
                                 point.Position.Z
                             )
                         });
