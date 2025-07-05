@@ -831,6 +831,22 @@ namespace Espresso
             foreach (IEsInstance child in _children)
             {
                 if (child is IEsInterface gui && !gui.Visible) continue;
+
+                if (child is IEsInterface guiChild && guiChild.Clip)
+                {
+                    var absPos = guiChild.AbsolutePosition;
+                    var absSize = guiChild.AbsoluteSize;
+                    var clipRect = new SDL.Rect
+                    {
+                        X = (int)absPos.X,
+                        Y = (int)absPos.Y,
+                        W = (int)absSize.X,
+                        H = (int)absSize.Y
+                    };
+
+                    SDL.SetRenderClipRect(_renderer, clipRect);
+                }
+                else SDL.SetRenderClipRect(_renderer, IntPtr.Zero);
                 
                 EsDrawInfo? drawInfo = child.Render();
                 
@@ -893,7 +909,7 @@ namespace Espresso
                         }
                     }
                     
-                    foreach (var point in shape.Points)
+                    foreach (EsPointInfo point in shape.Points)
                     {
                         if (point.Radius > 0)
                         {
@@ -910,7 +926,7 @@ namespace Espresso
                         }
                     }
                     
-                    foreach (var line in shape.Lines)
+                    foreach (EsLineInfo line in shape.Lines)
                     {
                         if (line.Start >= 0 && line.Start < shape.Points.Count && 
                             line.End >= 0 && line.End < shape.Points.Count)
@@ -931,6 +947,8 @@ namespace Espresso
                         }
                     }
                 }
+                
+                SDL.SetRenderClipRect(_renderer, IntPtr.Zero);
             }
             
             SDL.RenderPresent(_renderer);

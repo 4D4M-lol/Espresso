@@ -4,6 +4,7 @@ using Espresso.EspInstance;
 using Espresso.EspMath;
 using Espresso.EspScript;
 using Espresso.EspStyling;
+using SDL3;
 using System.Text.Json;
 
 // Interface Namespace
@@ -440,6 +441,50 @@ namespace Espresso.EspInterface
                 (parentSize.X * _position.Scale.X) + _position.Offset.X,
                 (parentSize.Y * _position.Scale.Y) + _position.Offset.Y
             );
+            
+            if (_autoSizeRule != EsAutomaticSizeRule.None && _children.Count != 0)
+            {
+                float minX = float.MaxValue;
+                float minY = float.MaxValue;
+                float maxX = float.MinValue;
+                float maxY = float.MinValue;
+
+                foreach (IEsInstance child in _children)
+                {
+                    if (child is IEsInterface childFrame)
+                    {
+                        EsVector2<float> childPos = childFrame.AbsolutePosition;
+                        EsVector2<float> childSize = childFrame.AbsoluteSize;
+                        minX = Math.Min(minX, childPos.X);
+                        minY = Math.Min(minY, childPos.Y);
+                        maxX = Math.Max(maxX, childPos.X + childSize.X);
+                        maxY = Math.Max(maxY, childPos.Y + childSize.Y);
+                    }
+                }
+
+                float requiredWidth = maxX - position.X;
+                float requiredHeight = maxY - position.Y;
+                (float width, float height) = (0, 0);
+
+                switch (_autoSizeRule)
+                {
+                    case EsAutomaticSizeRule.Horizontal:
+                        width = requiredWidth;
+                        
+                        break;
+                    case EsAutomaticSizeRule.Vertical:
+                        height = requiredHeight;
+                        
+                        break;
+                    case EsAutomaticSizeRule.Both:
+                        width = requiredWidth;
+                        height = requiredHeight;
+                        
+                        break;
+                }
+
+                size = new(width, height);
+            }
 
             int sizeConstraintIndex = _modifierNames.IndexOf("EsSizeConstraint");
 
@@ -468,15 +513,50 @@ namespace Espresso.EspInterface
 
             drawInfo.Shapes.Add(shapeInfo);
 
-            foreach (IEsInstance child in _children)
+            if (_children.Count != 0)
             {
-                if (child is IEsInterface gui && !gui.Visible) continue;
+                foreach (IEsInstance child in _children)
+                {
+                    if (child is IEsInterface gui && !gui.Visible) continue;
 
-                EsDrawInfo? childDrawInfo = child.Render();
-                
-                if (childDrawInfo == null) continue;
+                    if (_clip && child is IEsInterface childFrame)
+                    {
+                        EsVector2<float> childPos = childFrame.AbsolutePosition;
+                        EsVector2<float>  childSize = childFrame.AbsoluteSize;
 
-                foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes) drawInfo.Shapes.Add(childShapeInfo);
+                        if (childPos.X + childSize.X < position.X || 
+                            childPos.X > position.X + size.X ||
+                            childPos.Y + childSize.Y < position.Y || 
+                            childPos.Y > position.Y + size.Y
+                        ) continue;
+                    }
+
+                    EsDrawInfo? childDrawInfo = child.Render();
+        
+                    if (childDrawInfo == null) continue;
+
+                    foreach (EsShapeInfo childShapeInfo in childDrawInfo.Shapes) 
+                    {
+                        if (_clip)
+                        {
+                            for (int index = 0; index < childShapeInfo.Points.Count; index++)
+                            {
+                                EsPointInfo childPointInfo = childShapeInfo.Points[index];
+                                EsPointInfo newPointInfo = new()
+                                {
+                                    Position = new(
+                                        Math.Clamp(childPointInfo.Position.X, position.X, position.X + size.X),
+                                        Math.Clamp(childPointInfo.Position.Y, position.Y, position.Y + size.Y),
+                                        childPointInfo.Position.Z
+                                    ),
+                                    Radius = childPointInfo.Radius
+                                };
+                                childShapeInfo.Points[index] = newPointInfo;
+                            }
+                        }
+                        drawInfo.Shapes.Add(childShapeInfo);
+                    }
+                }
             }
             
             return drawInfo;
