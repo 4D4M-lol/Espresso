@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Espresso", "Espresso\Espresso.csproj", "{D465BFB0-1261-4228-A536-67FD24C3A584}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example", "Example\Example.csproj", "{6C4D4F6A-1E92-4257-8780-B39BE4C70DFF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D465BFB0-1261-4228-A536-67FD24C3A584}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D465BFB0-1261-4228-A536-67FD24C3A584}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D465BFB0-1261-4228-A536-67FD24C3A584}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D465BFB0-1261-4228-A536-67FD24C3A584}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C4D4F6A-1E92-4257-8780-B39BE4C70DFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C4D4F6A-1E92-4257-8780-B39BE4C70DFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C4D4F6A-1E92-4257-8780-B39BE4C70DFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C4D4F6A-1E92-4257-8780-B39BE4C70DFF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
